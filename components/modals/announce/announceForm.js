@@ -5,7 +5,6 @@ module.exports = {
         name: `announceForm`,
     },
     async execute (interaction) {
-        console.log(interaction);
         try {
             const announceTitle = interaction.fields.getTextInputValue('announceFormTitle');
             const announceContent = interaction.fields.getTextInputValue('announceFormContent');
@@ -15,16 +14,13 @@ module.exports = {
             const announceEmbed = new EmbedBuilder()
                 .setTitle(announceTitle)
                 .setDescription(announceContent)
-                if(announceImage !== undefined || announceImage !== null) {
-                    announceEmbed.setImage(announceImage);
-                }
-                if(announceColor !== undefined || announceColor !== null) {
-                    announceEmbed.setColor(announceColor);
-                } else {
-                    announceEmbed.setColor('#0193CF');
-                }
+                // if announceImage is not empty, set the image
+                .setImage(announceImage ? announceImage : null)
+                // if announceColor is not empty, set the color
+                .setColor(announceColor ? announceColor : "#0193CF")
 
             global.announceChannel.send({ embeds: [announceEmbed] });
+            await interaction.reply({ content: `Annoucement sent successfully !`, ephemeral: true });
         } catch (error) {
             console.log(error);
             await interaction.reply({ content: `Ouuups, I feel stressed to announce that. Please try again later. 😖`, ephemeral: true });

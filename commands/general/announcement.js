@@ -9,7 +9,7 @@ module.exports = {
             .setDescription('The channel to announce in')
             .setRequired(true)),
     async execute(interaction) {
-        global.annouceChannel = interaction.options.getChannel('channel');
+        global.announceChannel = interaction.options.getChannel('channel');
         const announceForm = new ModalBuilder()
             .setCustomId('announceForm')
             .setTitle('Announcement');

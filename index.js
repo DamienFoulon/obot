@@ -78,7 +78,32 @@ for (const folders of componentsFolders) {
 
 client.on('interactionCreate', async interaction => {
     // Handling Commands
-    if (interaction.isChatInputCommand) {
+    // if (interaction.isChatInputCommand) {
+    //     const command = interaction.client.commands.get(interaction.commandName);
+
+    //     if(command) {
+    //         try {
+    //             await command.execute(interaction);
+    //         } catch (error) {
+    //             console.log(error);
+    //             await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
+    //         }
+    //     } else {
+    //         return
+    //     }
+    // } else 
+    if (interaction.isModalSubmit()) {
+        const modal = interaction.client.components.get(interaction.customId);
+
+        if(modal) {
+            try {
+                await modal.execute(interaction);
+            } catch (error) {
+                console.log(error);
+                await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
+            }
+        }
+    } else if (interaction.isChatInputCommand) {
         const command = interaction.client.commands.get(interaction.commandName);
 
         if(command) {
@@ -91,53 +116,6 @@ client.on('interactionCreate', async interaction => {
         } else {
             return
         }
-    } else if (interaction.isButton) {
-        const button = interaction.client.components.get(interaction.customId);
-
-        if(button) {
-            try {
-                await button.execute(interaction);
-            } catch (error) {
-                console.log(error);
-                await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
-            }
-        }
-    } else if (interaction.isSelectMenu) {
-        const selectMenu = interaction.client.components.get(interaction.customId);
-
-        if(selectMenu) {
-            try {
-                await selectMenu.execute(interaction);
-            } catch (error) {
-                console.log(error);
-                await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
-            }
-        }
-    } else if (interaction.isModalSubmit) {
-        const modal = interaction.client.components.get(interaction.customId);
-
-        if(modal) {
-            try {
-                await modal.execute(interaction);
-            } catch (error) {
-                console.log(error);
-                await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
-            }
-        }
-    } else if (interaction.isContextMenuCommand) {
-        const contextMenu = interaction.client.components.get(interaction.customId);
-
-        if(contextMenu) {
-            try {
-                await contextMenu.execute(interaction);
-            } catch (error) {
-                console.log(error);
-                await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
-            }
-        }
-    }
-    else {
-        return
     }
 });
 
