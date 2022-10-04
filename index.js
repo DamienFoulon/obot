@@ -66,8 +66,8 @@ for (const folders of componentsFolders) {
             try {
                 const filePath = path.join(componentsSubPath, folder, file);
                 const component = require(filePath);
-                client.components.set(component.name, component);
-                console.log(`Component ${file} from ${folder} folder loaded ! 🟢`);
+                client.components.set(component.data.name, component);
+                console.log(`Component ${component.data.name} from ${folder} folder loaded ! 🟢`);
             } catch (error) {
                 console.log(`Error while loading component ${file} from ${folder} folder ! 🟠 `);
                 console.log(error);
@@ -135,8 +135,7 @@ client.on('interactionCreate', async interaction => {
                 await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
             }
         }
-    } 
-    
+    }
     else {
         return
     }
