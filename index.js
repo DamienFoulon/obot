@@ -77,21 +77,19 @@ for (const folders of componentsFolders) {
 }
 
 client.on('interactionCreate', async interaction => {
-    // Handling Commands
-    // if (interaction.isChatInputCommand) {
-    //     const command = interaction.client.commands.get(interaction.commandName);
 
-    //     if(command) {
-    //         try {
-    //             await command.execute(interaction);
-    //         } catch (error) {
-    //             console.log(error);
-    //             await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
-    //         }
-    //     } else {
-    //         return
-    //     }
-    // } else 
+    if (interaction.isChatInputCommand) {
+        const command = interaction.client.commands.get(interaction.commandName);
+
+        if(command) {
+            try {
+                await command.execute(interaction);
+            } catch (error) {
+                console.log(error);
+                await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
+            }
+        }
+    }
     if (interaction.isModalSubmit()) {
         const modal = interaction.client.components.get(interaction.customId);
 
@@ -103,18 +101,16 @@ client.on('interactionCreate', async interaction => {
                 await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
             }
         }
-    } else if (interaction.isChatInputCommand) {
-        const command = interaction.client.commands.get(interaction.commandName);
-
-        if(command) {
+    }
+    if (interaction.isUserContextMenuCommand()) {
+        const contextMenu = interaction.client.components.get(interaction.commandName);
+        if(contextMenu) {
             try {
-                await command.execute(interaction);
+                await contextMenu.execute(interaction);
             } catch (error) {
                 console.log(error);
                 await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
             }
-        } else {
-            return
         }
     }
 });
