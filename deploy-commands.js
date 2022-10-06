@@ -37,7 +37,7 @@ for (const folder of contextUserMenuCommandsFolders) {
         try {
             const filePath = path.join(contextUserMenuCommandsPath, folder, file);
             const contextUserMenuCommand = require(filePath);
-            contextUserMenuCommands.push(contextUserMenuCommand.data.toJSON());
+            commands.push(contextUserMenuCommand.data.toJSON());
             console.log(`Context menu command ${file} from ${folder} folder loaded ! 🟢`);
         } catch (error) {
             console.log(`Error while loading context menu command ${file} from ${folder} folder ! 🟠 `);
@@ -48,9 +48,5 @@ for (const folder of contextUserMenuCommandsFolders) {
 
 rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body: commands })
     .then(data => console.log(`Successfully registered ${data.length} commands.`))
-    .catch(console.error);
-
-rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body: contextUserMenuCommands })
-    .then(data => console.log(`Successfully registered ${data.length} context menu commands.`))
     .catch(console.error);
 
