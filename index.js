@@ -5,7 +5,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages] });
 
 // Load all commands
 client.commands = new Collection();
