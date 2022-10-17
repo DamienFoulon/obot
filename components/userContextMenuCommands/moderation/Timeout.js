@@ -3,7 +3,8 @@ const { ContextMenuCommandBuilder, ApplicationCommandType, PermissionFlagsBits, 
 module.exports = {
     data: new ContextMenuCommandBuilder()
         .setName('Timeout')
-        .setType(ApplicationCommandType.User),
+        .setType(ApplicationCommandType.User)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
         async execute(interaction) {
             try {
                 global.timeoutUser = interaction.targetMember;
