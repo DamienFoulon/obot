@@ -9,7 +9,8 @@ module.exports = {
             .setDescription('The channel to announce in')
             .setRequired(true)),
     async execute(interaction) {
-        global.announceChannel = interaction.options.getChannel('channel');
+        try {
+            global.announceChannel = interaction.options.getChannel('channel');
         const announceForm = new ModalBuilder()
             .setCustomId('announceForm')
             .setTitle('Announcement');
@@ -46,6 +47,10 @@ module.exports = {
         announceForm.addComponents(announceTitleComponent, announceContentComponent, announceImageComponent, announceColorComponent);
 
         await interaction.showModal(announceForm);
+        } catch (error) {
+            console.log(error);
+            await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
+        }
     }
 
 }

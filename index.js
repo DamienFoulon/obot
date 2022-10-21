@@ -113,6 +113,17 @@ client.on('interactionCreate', async interaction => {
             }
         }
     }
+    if (interaction.isButton()) {
+        const button = interaction.client.components.get(interaction.customId);
+        if(button) {
+            try {
+                await button.execute(interaction);
+            } catch (error) {
+                console.log(error);
+                await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
+            }
+        }
+    }
 });
 
 client.login(process.env.TOKEN);

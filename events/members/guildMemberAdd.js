@@ -6,6 +6,6 @@ module.exports = {
     execute(member) {
         console.log(`${member.user.tag} joined the server ! 🎉`);
         const welcomeChannel = member.guild.channels.cache.get(process.env.WELCOME_CHANNEL_ID);
-        welcomeChannel.send(`${member.user} fell into our world ! Cheer him 🎊🎉`);
+        welcomeChannel.send(`${process.env.WELCOME_PUBLIC_MESSAGE}`);
     }
 }
