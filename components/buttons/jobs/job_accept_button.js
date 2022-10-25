@@ -28,7 +28,7 @@ module.exports = {
                         { name: 'Remuneration', value: "```" + jobRemuneration + "```", inline: true },
                         { name: 'Required skills', value: "```" + jobRequiredSkills + "```", inline: true },
                     )
-                    .setFooter({ text: `The job was validated by ${jobUserValidator.username}` })
+                    .setFooter({ text: `The job was validated by ${interaction.user.username}` })
                     .setTimestamp();
 
                 const jobEmbedActionRow = new ActionRowBuilder()
@@ -42,7 +42,7 @@ module.exports = {
 
                 jobChannel.send({ embeds: [jobEmbed], components: [jobEmbedActionRow] });
                 interaction.reply({ content: `Beep boop ! The job offer has been successfully validated ! 🤖`, ephemeral: true});
-                jobUserCreator.send({ content: `Hey ${jobUserCreator} 👋\nYour job offer was approved by ${interaction} ! 🎉` });
+                jobUserCreator.send({ content: `Hey ${jobUserCreator} 👋\nYour job offer was approved by ${interaction.user} ! 🎉` });
                 interaction.message.react('✅');
             });
         } catch (error) {
