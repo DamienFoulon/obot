@@ -44,14 +44,17 @@ module.exports = {
                 );
             await jobValidationChannel.send({ embeds: [jobEmbed], components: [jobEmbedActionRow] }).then((message) => {
                 global.database.query('INSERT INTO jobs (id, title, description, remuneration, requiredSkills, author) VALUES (?, ?, ?, ?, ?, ?)', [message.id, jobTitle, jobDescription, jobRemuneration, jobRequiredSkills, jobUserCreator.id, message.id], (error, results) => {
-                    if (error) throw error;
-                    console.log(`The job was added to the database with the id ${results.insertId} ! 🚀`);
-                    jobUserCreator.send({ content: `Hey ${jobUserCreator} 👋\nYour job offer was successfully sended to the validation channel ! 🚀\nWait for the staff to deliver their opinion ⏳` }).catch(() => {
-                        console.log('The user has disabled the DMs !');
-                    });
+                    if (error) {
+                        console.log(error);
+                    } else {
+                        console.log(`The job was added to the database with the id ${results.insertId} ! 🚀`);
+                        jobUserCreator.send({ content: `Hey ${jobUserCreator} 👋\nYour job offer was successfully sended to the validation channel ! 🚀\nWait for the staff to deliver their opinion ⏳` }).catch(() => {
+                            console.log('The user has disabled the DMs !');
+                        });
+                        interaction.reply({ content: `Your job offer has been sent to the validation channel ! 📨`, ephemeral: true });
+                    }
                 });
             });
-            await interaction.reply({ content: `Your job offer has been sent to the validation channel ! 📨`, ephemeral: true });
 
         } catch (error) {
             console.log(error);
