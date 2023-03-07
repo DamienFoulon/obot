@@ -4,14 +4,15 @@
   "description": "A discord bot base, to start dev",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "cmdeploy": "node deploy-commands.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Damien Foulon",
   "license": "ISC",
   "dependencies": {
-    "canvas": "^2.10.1",
     "discord.js": "^14.6.0",
     "dotenv": "^16.0.3",
-    "mysql": "^2.18.1"
+    "mysql2": "^2.3.3"
   }
 }
