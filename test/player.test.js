@@ -173,3 +173,14 @@ test('pause, resume and volume', async () => {
   assert.equal(engine.volume, 1.5);
   assert.equal(player.volume, 150);
 });
+
+test('a pause refused by the engine (audio still buffering) leaves the player playing', async () => {
+  const { engine, ui, player } = setup();
+  player.add(tracks('a'));
+  await flush();
+  engine.canPause = false;
+  const updates = ui.calls.length;
+  assert.equal(player.pause(), false);
+  assert.equal(player.paused, false);
+  assert.equal(ui.calls.length, updates);
+});

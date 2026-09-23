@@ -64,6 +64,13 @@ export async function execute(interaction, res) {
       if (err instanceof VoiceJoinError) return err.message;
       throw err;
     }
+    // Reading the link takes time: meanwhile, another /play may have taken the bot to another channel
+    const channelError = getMusicAccessError(interaction, {
+      userChannelId: getUserChannel(guildId, userId),
+      botChannelId: getBotChannel(guildId),
+      needsControl: false,
+    });
+    if (channelError) return channelError;
     return formatAdded(result, player.add(result.tracks));
   });
 }

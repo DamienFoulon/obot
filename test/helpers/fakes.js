@@ -12,6 +12,8 @@ export class FakeEngine {
   destroyed = false;
   failing = new Set();
   gate = null;
+  // Like the audio player, which only pauses while it is actually playing
+  canPause = true;
 
   onTrackEnd(callback) { this.trackEnd = callback; }
   onDisconnect(callback) { this.disconnect = callback; }
@@ -29,8 +31,16 @@ export class FakeEngine {
   }
 
   finish() { this.trackEnd(); }
-  pause() { this.paused = true; }
-  resume() { this.paused = false; }
+  pause() {
+    if (!this.canPause) return false;
+    this.paused = true;
+    return true;
+  }
+
+  resume() {
+    this.paused = false;
+    return true;
+  }
   setVolume(volume) { this.volume = volume; }
   destroy() { this.destroyed = true; }
 }

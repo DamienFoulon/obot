@@ -44,3 +44,12 @@ test('a Spotify playlist, truncated to the limit', () => {
 test('a page without data', () => {
   assert.throws(() => parseSpotifyEmbed('<html></html>', 'u1', 100), ResolveError);
 });
+
+test('a Spotify playlist of 100 tracks may be longer: the embed page stops at 100', () => {
+  const trackList = Array.from({ length: 100 }, (_, i) => ({ title: `T${i}`, subtitle: 'Artist', duration: 1000 }));
+  const data = { props: { pageProps: { state: { data: { entity: { type: 'playlist', name: 'Big', trackList } } } } } };
+  const html = `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(data)}</script>`;
+  const { tracks, truncated } = parseSpotifyEmbed(html, 'u1', 100);
+  assert.equal(tracks.length, 100);
+  assert.equal(truncated, true);
+});
