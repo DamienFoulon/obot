@@ -1,64 +1,46 @@
-const { ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { execute } = require('../../buttons/jobs/job_opener_button');
+import { ButtonStyleTypes, InteractionResponseFlags, MessageComponentTypes } from 'discord-interactions';
+import { getDatabase } from '../../../database.js';
+import { jobOfferContainer } from '../../../lib/jobOffer.js';
+import { getModalValues, replyAfter, sendDM, sendMessage } from '../../../utils.js';
 
-const mysql = require('mysql');
-const dotenv = require('dotenv');
-dotenv.config();
+export const customId = 'job_opener_modal';
 
-module.exports = {
-    data: {
-        name: `job_opener_modal`,
-    },
-    async execute(interaction) {
-        try {
-            let jobTitle = interaction.fields.getTextInputValue('jobTitle');
-            let jobDescription = interaction.fields.getTextInputValue('jobDescription');
-            let jobRemuneration = interaction.fields.getTextInputValue('jobRemuneration');
-            let jobRequiredSkills = interaction.fields.getTextInputValue('jobRequiredSkills') || 'None';
-            let jobUserCreator = interaction.user;
-            let jobValidationChannel = interaction.guild.channels.cache.get(process.env.JOB_VALIDATION_CHANNEL_ID);
+export async function execute(interaction, res) {
+  const values = getModalValues(interaction.data.components);
+  const job = {
+    title: values.title,
+    description: values.description,
+    remuneration: values.remuneration,
+    requiredSkills: values.required_skills || 'None',
+    author: interaction.member.user.id,
+  };
 
-            const jobEmbed = new EmbedBuilder()
-                .setColor(process.env.OBOT_COLOR)
-                .setTitle(jobTitle)
-                .setAuthor({ name: jobUserCreator.username, iconURL: jobUserCreator.displayAvatarURL() })
-                .setDescription(jobDescription)
-                .addFields(
-                    { name: 'Remuneration', value: "```" + jobRemuneration + "```", inline: true },
-                    { name: 'Required skills', value: "```" + jobRequiredSkills + "```", inline: true },
-                )
-                .setTimestamp();
+  await replyAfter(interaction, res, async () => {
+    const validationMessage = await sendMessage(process.env.JOB_VALIDATION_CHANNEL_ID, {
+      flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+      // Only display the mention, never ping anyone from a user-written offer
+      allowed_mentions: { parse: [] },
+      components: [
+        jobOfferContainer(job, null, [
+          {
+            type: MessageComponentTypes.ACTION_ROW,
+            components: [
+              { type: MessageComponentTypes.BUTTON, style: ButtonStyleTypes.SECONDARY, custom_id: 'job_accept_button', label: 'Accept', emoji: { name: '✅' } },
+              { type: MessageComponentTypes.BUTTON, style: ButtonStyleTypes.SECONDARY, custom_id: 'job_decline_button', label: 'Decline', emoji: { name: '❌' } },
+            ],
+          },
+        ]),
+      ],
+    });
 
-            const jobEmbedActionRow = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('job_accept_button')
-                        .setLabel('Accept')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setEmoji('✅'),
-                    new ButtonBuilder()
-                        .setCustomId('job_decline_button')
-                        .setLabel('Decline')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setEmoji('❌')
-                );
-            await jobValidationChannel.send({ embeds: [jobEmbed], components: [jobEmbedActionRow] }).then((message) => {
-                global.database.query('INSERT INTO jobs (id, title, description, remuneration, requiredSkills, author) VALUES (?, ?, ?, ?, ?, ?)', [message.id, jobTitle, jobDescription, jobRemuneration, jobRequiredSkills, jobUserCreator.id, message.id], (error, results) => {
-                    if (error) {
-                        console.log(error);
-                    } else {
-                        console.log(`The job was added to the database with the id ${results.insertId} ! 🚀`);
-                        jobUserCreator.send({ content: `Hey ${jobUserCreator} 👋\nYour job offer was successfully sended to the validation channel ! 🚀\nWait for the staff to deliver their opinion ⏳` }).catch(() => {
-                            console.log('The user has disabled the DMs !');
-                        });
-                        interaction.reply({ content: `Your job offer has been sent to the validation channel ! 📨`, ephemeral: true });
-                    }
-                });
-            });
+    // The validation message id is the job id, so the buttons can find the job back
+    await getDatabase().execute(
+      'INSERT INTO jobs (id, title, description, remuneration, requiredSkills, author) VALUES (?, ?, ?, ?, ?, ?)',
+      [validationMessage.id, job.title, job.description, job.remuneration, job.requiredSkills, job.author],
+    );
+    console.log(`The job was added to the database with the id ${validationMessage.id} ! 🚀`);
 
-        } catch (error) {
-            console.log(error);
-            await interaction.reply({ content: 'Ooops... ! I fell into the stairs 🤕 Can you please try again ?', ephemeral: true });
-        }
-    }
+    await sendDM(job.author, `Hey <@${job.author}> 👋\nYour job offer was successfully sent to the validation channel ! 🚀\nWait for the staff to deliver their opinion ⏳`);
+    return 'Your job offer has been sent to the validation channel ! 📨';
+  });
 }

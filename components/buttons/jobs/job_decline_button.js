@@ -1,23 +1,20 @@
-const mysql = require('mysql');
+import { getDatabase } from '../../../database.js';
+import { addReaction, replyAfter, sendDM } from '../../../utils.js';
 
-module.exports = {
-    data: {
-        name: `job_decline_button`,
-    },
-    async execute(interaction) {
-        try {
-            global.database.query("DELETE FROM jobs WHERE id='" + interaction.message.id + "'", (error) => {
-                if (error) throw error;
-                interaction.reply({ content: `The job offer was successfully deleted from the database ! 🗑️`, ephemeral: true });
-                let author = interaction.guild.members.cache.find(member => member.user.username === interaction.message.embeds[0].author.name)
-                author.send({ content: `Hey ${author} 👋\nYour job offer was declined by ${interaction.user} ! 😢` }).catch(() => {
-                    console.log(`The user has disabled the DMs !`);
-                });
-                interaction.message.react('🗑️');
-            })
-        } catch (error) {
-            console.log(error);
-            await interaction.reply({ content: 'Ooops... ! I fell into the stairs 🤕 Can you please try again ?', ephemeral: true });
-        }
-    },
+export const customId = 'job_decline_button';
+
+export async function execute(interaction, res) {
+  const { message } = interaction;
+  const validator = interaction.member.user;
+
+  await replyAfter(interaction, res, async () => {
+    const [jobs] = await getDatabase().execute('SELECT author FROM jobs WHERE id = ?', [message.id]);
+    const job = jobs[0];
+    if (!job) return `The ticket disappeared from my ticket's box 😭`;
+
+    await getDatabase().execute('DELETE FROM jobs WHERE id = ?', [message.id]);
+    await sendDM(job.author, `Hey <@${job.author}> 👋\nYour job offer was declined by <@${validator.id}> ! 😢`);
+    await addReaction(message.channel_id, message.id, '🗑️');
+    return 'The job offer was successfully deleted from the database ! 🗑️';
+  });
 }
