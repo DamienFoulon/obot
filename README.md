@@ -27,6 +27,7 @@ following the structure of the [official example app](https://github.com/discord
 - Welcome and leave messages
 - Bot activity (Playing / Listening / Watching)
 - Announcements and job offers (with a staff validation step, stored in MySQL)
+- Music: /play a YouTube, SoundCloud, Spotify, Deezer or Apple Music link (tracks, albums, playlists) or a search, with a queue, pause, volume, loop and buttons
 
 
 ## Project structure
@@ -35,12 +36,15 @@ following the structure of the [official example app](https://github.com/discord
 ├── commands        -> one file per command (payload + handler)
 │   ├── general
 │   ├── jobs
-│   └── moderation
+│   ├── moderation
+│   └── music
 ├── components      -> one file per button / modal handler
 │   ├── buttons
 │   └── modals
 ├── events          -> one file per Gateway event handler
 ├── lib             -> feature specific helpers
+├── scripts         -> maintenance scripts (voice-probe.js)
+├── test            -> tests (npm test)
 ├── .env            -> your credentials and IDs
 ├── app.js          -> main entrypoint, receives the interactions
 ├── commands.js     -> registers the commands on Discord
@@ -75,7 +79,7 @@ On the **Installation** page :
 
 - In **Installation Contexts**, select **Guild Install** (and **User Install** if you want commands like `/obot` to be usable everywhere)
 - In **Default Install Settings** > **Guild Install**, add the scopes `applications.commands` and `bot`,
-  and the bot permissions `Send Messages`, `Add Reactions`, `Kick Members`, `Ban Members` and `Moderate Members`
+  and the bot permissions `Send Messages`, `Add Reactions`, `Kick Members`, `Ban Members`, `Moderate Members`, `Connect` and `Speak`
 - Open the **Install Link** in your browser to add the bot to your server
 
 ### 2. Register the commands
@@ -128,6 +132,49 @@ CREATE TABLE jobs (
     author VARCHAR(32) NOT NULL
 );
 ```
+
+
+## Music
+
+The music commands need [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://ffmpeg.org).
+Without yt-dlp, the bot starts anyway and the music commands say they are not available.
+
+```bash
+  # yt-dlp standalone binary, no Python needed
+  mkdir -p ~/.local/bin
+  curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o ~/.local/bin/yt-dlp
+  chmod +x ~/.local/bin/yt-dlp
+  # Keep it up to date: YouTube changes often
+  yt-dlp -U
+```
+
+Set `YTDLP_PATH` when yt-dlp is not in the `PATH` of the bot.
+
+Spotify, Deezer and Apple Music protect their audio: the bot reads the title and the artist of their links and
+plays the first YouTube result. It can be another version of the track (live, remix...).
+Playlists and albums are limited to 100 tracks, the queue to 500.
+
+### YouTube blocks the bot
+
+On a server (VPS, PaaS...), YouTube often answers "Sign in to confirm you're not a bot". Give yt-dlp the cookies
+of a Google account, preferably a secondary one, following the
+[yt-dlp guide](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies), then set
+`YTDLP_COOKIES` to the path of the cookies file.
+
+### Check that your host can play music
+
+Discord voice uses UDP. Before deploying, stop the bot and run on the host:
+
+```bash
+  node scripts/voice-probe.js <guildId> <voiceChannelId>
+```
+
+The bot joins the channel and plays a 10 s tone.
+
+### DJ role
+
+By default, everybody in the voice channel of the bot controls the music. Set `DJ_ROLE_ID` to keep skip, stop,
+pause, volume and loop for this role and the administrators.
 
 
 ## Configuration
