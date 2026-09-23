@@ -3,6 +3,7 @@ import express from 'express';
 import { InteractionResponseType, InteractionType, verifyKeyMiddleware } from 'discord-interactions';
 import { hasPermission } from './constants.js';
 import { connectGateway } from './gateway.js';
+import { checkYtDlp } from './lib/music/ytdlp.js';
 import { ERROR_MESSAGE, ephemeralReply, loadModules, parseCustomId } from './utils.js';
 
 // Slash commands and user commands, by command name
@@ -63,6 +64,9 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     if (!res.headersSent) res.send(ephemeralReply(ERROR_MESSAGE));
   }
 });
+
+// Without yt-dlp, the music commands say so and the rest of the bot works
+await checkYtDlp();
 
 app.listen(PORT, () => {
   console.log('Listening on port', PORT);

@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { REST } from '@discordjs/rest';
 import { WebSocketManager, WebSocketShardEvents } from '@discordjs/ws';
 import { GatewayIntentBits, GatewayOpcodes, PresenceUpdateStatus } from 'discord-api-types/v10';
+import { setVoicePayloadSender } from './lib/music/voiceAdapter.js';
 import { loadModules } from './utils.js';
 
 /**
@@ -19,7 +20,9 @@ const manager = new WebSocketManager({
   token: process.env.DISCORD_TOKEN,
   // Guild Members is a privileged intent: it must be enabled on the Bot page of the Developer Portal
   // Message Content is not needed: the slow mode only looks at who sends a message
-  intents: GatewayIntentBits.Guilds | GatewayIntentBits.GuildMembers | GatewayIntentBits.GuildMessages,
+  // Guild Voice States: to join the voice channel of a member and to connect the music player
+  intents: GatewayIntentBits.Guilds | GatewayIntentBits.GuildMembers | GatewayIntentBits.GuildMessages
+    | GatewayIntentBits.GuildVoiceStates,
   rest,
 });
 
@@ -49,6 +52,16 @@ manager.on(WebSocketShardEvents.Ready, async (data, shardId) => {
 manager.on(WebSocketShardEvents.Error, (err, shardId) => {
   console.error(`Gateway error on shard ${shardId}`, err);
 });
+
+// Voice connections are asked on the Gateway, on the shard of their guild
+// See https://docs.discord.com/developers/events/gateway#sharding
+export async function sendGatewayPayload(guildId, payload) {
+  const shardCount = await manager.getShardCount();
+  const shardId = Number((BigInt(guildId) >> 22n) % BigInt(shardCount));
+  await manager.send(shardId, payload);
+}
+
+setVoicePayloadSender(sendGatewayPayload);
 
 export async function connectGateway() {
   await manager.connect();
