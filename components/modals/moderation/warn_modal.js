@@ -1,6 +1,8 @@
+import { Permissions } from '../../../constants.js';
 import { getModalValues, parseCustomId, replyAfter, sendDM } from '../../../utils.js';
 
 export const customId = 'warn_modal';
+export const requiredPermission = Permissions.MODERATE_MEMBERS;
 
 export async function execute(interaction, res) {
   const [userId] = parseCustomId(interaction.data.custom_id).args;

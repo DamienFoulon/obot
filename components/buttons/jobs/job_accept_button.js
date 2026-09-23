@@ -1,9 +1,11 @@
+import { Permissions } from '../../../constants.js';
 import { ButtonStyleTypes, InteractionResponseFlags, MessageComponentTypes } from 'discord-interactions';
 import { getDatabase } from '../../../database.js';
 import { jobOfferContainer } from '../../../lib/jobOffer.js';
 import { addReaction, replyAfter, sendDM, sendMessage } from '../../../utils.js';
 
 export const customId = 'job_accept_button';
+export const requiredPermission = Permissions.MANAGE_MESSAGES;
 
 export async function execute(interaction, res) {
   const { message } = interaction;

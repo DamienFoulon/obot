@@ -1,7 +1,9 @@
+import { Permissions } from '../../../constants.js';
 import { getDatabase } from '../../../database.js';
 import { addReaction, replyAfter, sendDM } from '../../../utils.js';
 
 export const customId = 'job_decline_button';
+export const requiredPermission = Permissions.MANAGE_MESSAGES;
 
 export async function execute(interaction, res) {
   const { message } = interaction;

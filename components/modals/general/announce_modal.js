@@ -1,7 +1,9 @@
+import { Permissions } from '../../../constants.js';
 import { MessageComponentTypes, InteractionResponseFlags } from 'discord-interactions';
 import { getModalValues, parseColor, parseCustomId, replyAfter, sendMessage } from '../../../utils.js';
 
 export const customId = 'announce_modal';
+export const requiredPermission = Permissions.MANAGE_MESSAGES;
 
 export async function execute(interaction, res) {
   const [channelId] = parseCustomId(interaction.data.custom_id).args;

@@ -159,6 +159,15 @@ export async function execute(interaction, res) {
 }
 ```
 
+When a component does something sensitive, export a `requiredPermission` : it is checked on every interaction.
+Don't rely on the command's `default_member_permissions` alone, server admins can change it.
+
+```js
+import { Permissions } from '../../../constants.js';
+
+export const requiredPermission = Permissions.BAN_MEMBERS;
+```
+
 A `custom_id` can carry data after a `:`, e.g. `ban_modal:<userId>` is handled by the `ban_modal` component,
 which reads the user id with `parseCustomId(interaction.data.custom_id).args`.
 

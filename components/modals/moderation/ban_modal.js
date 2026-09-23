@@ -1,6 +1,8 @@
+import { Permissions } from '../../../constants.js';
 import { DiscordRequest, auditLogReason, getModalValues, parseCustomId, replyAfter } from '../../../utils.js';
 
 export const customId = 'ban_modal';
+export const requiredPermission = Permissions.BAN_MEMBERS;
 
 export async function execute(interaction, res) {
   const [userId] = parseCustomId(interaction.data.custom_id).args;

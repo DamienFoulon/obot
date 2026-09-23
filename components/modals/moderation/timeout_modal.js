@@ -1,6 +1,8 @@
+import { Permissions } from '../../../constants.js';
 import { DiscordRequest, auditLogReason, getModalValues, parseCustomId, replyAfter } from '../../../utils.js';
 
 export const customId = 'timeout_modal';
+export const requiredPermission = Permissions.MODERATE_MEMBERS;
 
 // Discord does not allow a timeout longer than 28 days
 const MAX_TIMEOUT_SECONDS = 28 * 24 * 60 * 60;

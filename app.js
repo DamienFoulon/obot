@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { InteractionResponseType, InteractionType, verifyKeyMiddleware } from 'discord-interactions';
+import { hasPermission } from './constants.js';
 import { ERROR_MESSAGE, ephemeralReply, loadModules, parseCustomId } from './utils.js';
 
 // Slash commands and user commands, by command name
@@ -43,6 +44,12 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (!handler) {
     console.error('unknown interaction', interaction.type, interaction.data?.name ?? interaction.data?.custom_id);
     return res.status(400).json({ error: 'unknown interaction' });
+  }
+
+  // default_member_permissions only hides commands by default (server admins can change it),
+  // and a component custom_id carries its target: always check the permission server side
+  if (handler.requiredPermission && !hasPermission(interaction, handler.requiredPermission)) {
+    return res.send(ephemeralReply("You don't have the permission to do that 👮"));
   }
 
   const user = interaction.member?.user ?? interaction.user;
