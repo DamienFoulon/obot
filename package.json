@@ -11,17 +11,20 @@
   "scripts": {
     "start": "node app.js",
     "register": "node commands.js",
-    "dev": "node --watch app.js"
+    "dev": "node --watch app.js",
+    "test": "node --test \"test/**/*.test.js\""
   },
   "author": "Damien Foulon",
   "license": "ISC",
   "dependencies": {
     "@discordjs/rest": "^2.6.3",
+    "@discordjs/voice": "^0.19.2",
     "@discordjs/ws": "^2.0.4",
     "discord-api-types": "^0.38.55",
     "discord-interactions": "^4.4.0",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
-    "mysql2": "^3.24.4"
+    "mysql2": "^3.24.4",
+    "opusscript": "^0.0.8"
   }
 }
