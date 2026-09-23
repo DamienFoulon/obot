@@ -16,6 +16,9 @@
   "author": "Damien Foulon",
   "license": "ISC",
   "dependencies": {
+    "@discordjs/rest": "^2.6.3",
+    "@discordjs/ws": "^2.0.4",
+    "discord-api-types": "^0.38.55",
     "discord-interactions": "^4.4.0",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",

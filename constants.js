@@ -4,6 +4,7 @@ export const Permissions = {
   KICK_MEMBERS: String(1n << 1n),
   BAN_MEMBERS: String(1n << 2n),
   ADMINISTRATOR: String(1n << 3n),
+  MANAGE_GUILD: String(1n << 5n),
   MANAGE_MESSAGES: String(1n << 13n),
   MODERATE_MEMBERS: String(1n << 40n),
 };

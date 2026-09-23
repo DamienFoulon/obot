@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { InteractionResponseType, InteractionType, verifyKeyMiddleware } from 'discord-interactions';
 import { hasPermission } from './constants.js';
+import { connectGateway } from './gateway.js';
 import { ERROR_MESSAGE, ephemeralReply, loadModules, parseCustomId } from './utils.js';
 
 // Slash commands and user commands, by command name
@@ -66,3 +67,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
 app.listen(PORT, () => {
   console.log('Listening on port', PORT);
 });
+
+// Gateway connection for server events and the bot activity (see gateway.js)
+await connectGateway();

@@ -7,11 +7,12 @@
 A clean Discord bot base, built the way Discord's official
 [getting started guide](https://docs.discord.com/developers/quick-start/getting-started) does it 🤖
 
-Instead of keeping a WebSocket (Gateway) connection open, Discord sends every interaction
-(slash command, button click, modal submit...) as an HTTP request to your app, which answers it.
-It is lighter, scales easily and can be hosted almost anywhere.
+Discord sends every interaction (slash command, button click, modal submit...) as an HTTP request
+to your app, which answers it. Next to it, a lightweight [Gateway](https://docs.discord.com/developers/events/gateway)
+connection receives what HTTP can't: server events (members joining or leaving, messages) and the bot activity.
 
-Built with [Express](https://expressjs.com) and [discord-interactions](https://github.com/discord/discord-interactions-js),
+Built with [Express](https://expressjs.com), [discord-interactions](https://github.com/discord/discord-interactions-js)
+and [@discordjs/ws](https://www.npmjs.com/package/@discordjs/ws) for the Gateway,
 following the structure of the [official example app](https://github.com/discord/discord-example-app).
 
 
@@ -21,7 +22,10 @@ following the structure of the [official example app](https://github.com/discord
 - Buttons and modals, using the latest components ([Labels](https://docs.discord.com/developers/components/reference#label) in modals, [Components V2](https://docs.discord.com/developers/components/reference#container) in messages)
 - Commands and components handling: just drop a file in the right folder
 - Installation contexts support (server install / user install)
-- Moderation: ban, kick, timeout and warn
+- Events handling (Gateway): just drop a file in the `events` folder
+- Moderation: ban, kick, timeout, warn and slow mode
+- Welcome and leave messages
+- Bot activity (Playing / Listening / Watching)
 - Announcements and job offers (with a staff validation step, stored in MySQL)
 
 
@@ -35,12 +39,14 @@ following the structure of the [official example app](https://github.com/discord
 ├── components      -> one file per button / modal handler
 │   ├── buttons
 │   └── modals
+├── events          -> one file per Gateway event handler
 ├── lib             -> feature specific helpers
 ├── .env            -> your credentials and IDs
 ├── app.js          -> main entrypoint, receives the interactions
 ├── commands.js     -> registers the commands on Discord
 ├── constants.js    -> Discord constants (permissions, contexts...)
 ├── database.js     -> MySQL connection
+├── gateway.js      -> Gateway connection (events, bot activity)
 ├── utils.js        -> Discord API helpers
 └── package.json
 ```
@@ -62,7 +68,8 @@ Requires Node.js 20.12 or newer.
 In the [Developer Portal](https://discord.com/developers/applications), create an application, then fill your `.env` :
 
 - **General Information** page : copy the **Application ID** into `APP_ID` and the **Public Key** into `PUBLIC_KEY`
-- **Bot** page : reset and copy the **Token** into `DISCORD_TOKEN`
+- **Bot** page : reset and copy the **Token** into `DISCORD_TOKEN`, and enable the **Server Members Intent**
+  (a [privileged intent](https://docs.discord.com/developers/events/gateway#privileged-intents), needed for the welcome and leave messages)
 
 On the **Installation** page :
 
@@ -95,12 +102,15 @@ Discord needs a public HTTPS URL to reach your app. Locally, you can use [ngrok]
 Then, on the **General Information** page of your app, set the **Interactions Endpoint URL** to
 `https://<your-ngrok-url>/interactions` and save. Discord checks the URL right away, so the app must be running.
 
+`npm start` also opens the Gateway connection: the bot shows up online and starts listening to the server events.
+
 And here you are ! 🎉
 
 
 ## Environment Variables
 
-All the variables are listed in `.env.sample`. The minimum is :
+All the variables are listed in `.env.sample`. In the welcome and leave messages, `{user}` is replaced by the member.
+The minimum is :
 
 `APP_ID`
 `DISCORD_TOKEN`
@@ -184,12 +194,28 @@ await replyAfter(interaction, res, async () => {
 ```
 
 
+### Setup Events
+
+Create a file in a sub-folder of `events`. The name is the [Gateway event](https://docs.discord.com/developers/events/gateway-events#receive-events)
+name, and the handler receives the raw event data :
+
+```js
+import { sendMessage } from '../../utils.js';
+
+export const name = 'GUILD_MEMBER_ADD';
+
+export async function execute(member) {
+  console.log(`User : ${member.user.username} joined the server 🛬`);
+}
+```
+
+Some events need an extra intent, to add in `gateway.js`. Before adding a privileged one,
+check [whether you really need it](https://docs.discord.com/developers/gateway/you-might-not-need-a-privileged-intent).
+
+
 ## Good to know
 
-This base only uses HTTP interactions, so it does not receive Gateway events :
-it can't react to members joining or leaving, read messages or set a custom bot status.
-If you need those, see [Gateway events](https://docs.discord.com/developers/events/gateway)
-and [whether you need a privileged intent](https://docs.discord.com/developers/gateway/you-might-not-need-a-privileged-intent).
+The slow mode list and the bot activity are kept in memory: they are reset when the bot restarts.
 
 
 ## Resources
