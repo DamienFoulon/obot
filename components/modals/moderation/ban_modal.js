@@ -1,4 +1,5 @@
 import { Permissions } from '../../../constants.js';
+import { getModerationError } from '../../../lib/moderation.js';
 import { DiscordRequest, auditLogReason, getModalValues, parseCustomId, replyAfter } from '../../../utils.js';
 
 export const customId = 'ban_modal';
@@ -10,6 +11,9 @@ export async function execute(interaction, res) {
   const days = Math.min(Math.max(parseInt(delete_messages_days) || 0, 0), 7);
 
   await replyAfter(interaction, res, async () => {
+    const moderationError = await getModerationError(interaction, userId, 'ban');
+    if (moderationError) return moderationError;
+
     await DiscordRequest(`guilds/${interaction.guild_id}/bans/${userId}`, {
       method: 'PUT',
       headers: auditLogReason(reason),

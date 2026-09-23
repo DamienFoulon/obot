@@ -1,4 +1,5 @@
 import { Permissions } from '../../../constants.js';
+import { getModerationError } from '../../../lib/moderation.js';
 import { DiscordRequest, auditLogReason, getModalValues, parseCustomId, replyAfter } from '../../../utils.js';
 
 export const customId = 'timeout_modal';
@@ -15,6 +16,9 @@ export async function execute(interaction, res) {
   const removeTimeout = Number.isNaN(seconds) || seconds <= 0;
 
   await replyAfter(interaction, res, async () => {
+    const moderationError = await getModerationError(interaction, userId, 'timeout');
+    if (moderationError) return moderationError;
+
     const timeoutSeconds = Math.min(seconds, MAX_TIMEOUT_SECONDS);
     await DiscordRequest(`guilds/${interaction.guild_id}/members/${userId}`, {
       method: 'PATCH',

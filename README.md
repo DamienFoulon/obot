@@ -217,6 +217,10 @@ check [whether you really need it](https://docs.discord.com/developers/gateway/y
 
 The slow mode list and the bot activity are kept in memory: they are reset when the bot restarts.
 
+Discord never lets the bot sanction the server owner, a member whose role is above the bot's role,
+or timeout an administrator. The moderation commands check it first and explain why they can't act,
+so remember to move the bot's role high enough in the server settings.
+
 
 ## Resources
 

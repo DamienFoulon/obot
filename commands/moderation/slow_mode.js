@@ -1,6 +1,7 @@
 import { CommandTypes, Contexts, IntegrationTypes, Permissions } from '../../constants.js';
-import { toggleSlowMode } from '../../lib/slowMode.js';
-import { ephemeralReply } from '../../utils.js';
+import { getModerationError } from '../../lib/moderation.js';
+import { isInSlowMode, toggleSlowMode } from '../../lib/slowMode.js';
+import { replyAfter } from '../../utils.js';
 
 // User command: right click on a member > Apps > SlowMode
 export const data = {
@@ -14,6 +15,14 @@ export const data = {
 export const requiredPermission = Permissions.MODERATE_MEMBERS;
 
 export async function execute(interaction, res) {
-  const slowed = toggleSlowMode(interaction.data.target_id);
-  return res.send(ephemeralReply(slowed ? 'The user got splashed with honey ! 🐢' : 'The user is suuuupaaafast now ! 🏃'));
+  const userId = interaction.data.target_id;
+
+  await replyAfter(interaction, res, async () => {
+    // The slow mode times the member out: check it is possible before enabling it (disabling is always fine)
+    if (!isInSlowMode(userId)) {
+      const moderationError = await getModerationError(interaction, userId, 'timeout');
+      if (moderationError) return moderationError;
+    }
+    return toggleSlowMode(userId) ? 'The user got splashed with honey ! 🐢' : 'The user is suuuupaaafast now ! 🏃';
+  });
 }
