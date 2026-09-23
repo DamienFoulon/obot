@@ -1,18 +1,27 @@
 {
-  "name": "base_discord_bot_v14",
-  "version": "1.0.0",
-  "description": "A discord bot base, to start dev",
-  "main": "index.js",
+  "name": "obot",
+  "private": true,
+  "version": "2.0.0",
+  "description": "A Discord bot base, built with Discord's official HTTP interactions approach",
+  "main": "app.js",
+  "type": "module",
+  "engines": {
+    "node": ">=20.12"
+  },
   "scripts": {
-    "start": "node index.js",
-    "cmdeploy": "node deploy-commands.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "register": "node commands.js",
+    "dev": "node --watch app.js"
   },
   "author": "Damien Foulon",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^14.6.0",
-    "dotenv": "^16.0.3",
-    "mysql2": "^2.3.3"
+    "@discordjs/rest": "^2.6.3",
+    "@discordjs/ws": "^2.0.4",
+    "discord-api-types": "^0.38.55",
+    "discord-interactions": "^4.4.0",
+    "dotenv": "^16.6.1",
+    "express": "^5.2.1",
+    "mysql2": "^3.24.4"
   }
 }

@@ -1,59 +1,38 @@
-const { ActionRowBuilder, EmbedBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+import { Permissions } from '../../../constants.js';
+import { ButtonStyleTypes, InteractionResponseFlags, MessageComponentTypes } from 'discord-interactions';
+import { getDatabase } from '../../../database.js';
+import { jobOfferContainer } from '../../../lib/jobOffer.js';
+import { addReaction, replyAfter, sendDM, sendMessage } from '../../../utils.js';
 
-const mysql = require('mysql');
+export const customId = 'job_accept_button';
+export const requiredPermission = Permissions.MANAGE_MESSAGES;
 
-module.exports = {
-    data: {
-        name: `job_accept_button`,
-    },
-    async execute(interaction) {
-        try {
-            console.log(`SELECT * FROM jobs WHERE id='${interaction.message.id}'`);
-            global.database.query("SELECT * FROM jobs WHERE id='" + interaction.message.id+"'", (error, results) => {
-                if(!error && results.length > 0) {
-                    let jobTitle = results[0].title;
-                    let jobDescription = results[0].description;
-                    let jobRemuneration = results[0].remuneration;
-                    let jobRequiredSkills = results[0].requiredSkills;
-                    let jobUserCreator = interaction.guild.members.cache.get(results[0].author);
-                    let jobChannel = interaction.guild.channels.cache.get(process.env.JOB_CHANNEL_ID);
-                    let jobUserValidator = interaction.user;
+export async function execute(interaction, res) {
+  const { message } = interaction;
+  const validator = interaction.member.user;
 
-                    const jobEmbed = new EmbedBuilder()
-                        .setColor(process.env.OBOT_COLOR)
-                        .setTitle(jobTitle)
-                        .setAuthor({ name: jobUserCreator.user.username, iconURL: jobUserCreator.user.displayAvatarURL() })
-                        .setDescription(jobDescription)
-                        .addFields(
-                            { name: 'Remuneration', value: "```" + jobRemuneration + "```", inline: true },
-                            { name: 'Required skills', value: "```" + jobRequiredSkills + "```", inline: true },
-                        )
-                        .setFooter({ text: `The job was validated by ${interaction.user.username}` })
-                        .setTimestamp();
+  await replyAfter(interaction, res, async () => {
+    const [jobs] = await getDatabase().execute('SELECT * FROM jobs WHERE id = ?', [message.id]);
+    const job = jobs[0];
+    if (!job) return `The ticket disappeared from my ticket's box 😭`;
 
-                    const jobEmbedActionRow = new ActionRowBuilder()
-                        .addComponents(
-                            new ButtonBuilder()
-                                .setLabel('Reply')
-                                .setStyle(ButtonStyle.Link)
-                                .setURL(`https://discord.com/users/${jobUserCreator.user.id}`)
-                                .setEmoji('📨')
-                        );
+    await sendMessage(process.env.JOB_CHANNEL_ID, {
+      flags: InteractionResponseFlags.IS_COMPONENTS_V2,
+      allowed_mentions: { parse: [] },
+      components: [
+        jobOfferContainer(job, `The job was validated by ${validator.username}`, [
+          {
+            type: MessageComponentTypes.ACTION_ROW,
+            components: [
+              { type: MessageComponentTypes.BUTTON, style: ButtonStyleTypes.LINK, label: 'Reply', url: `https://discord.com/users/${job.author}`, emoji: { name: '📨' } },
+            ],
+          },
+        ]),
+      ],
+    });
 
-                    jobChannel.send({ embeds: [jobEmbed], components: [jobEmbedActionRow] });
-                    interaction.reply({ content: `Beep boop ! The job offer has been successfully validated ! 🤖`, ephemeral: true});
-                    jobUserCreator.send({ content: `Hey ${jobUserCreator} 👋\nYour job offer was approved by ${interaction.user} ! 🎉` }).catch(() => {
-                        console.log(`The user has disabled the DMs !`);
-                    });
-                    interaction.message.react('✅');
-                } else {
-                    console.log(error);
-                    interaction.reply({ content: `The ticket disappeared from my ticket's box 😭`, ephemeral: true });
-                }
-            });
-        } catch (error) {
-            console.log(error);
-            await interaction.reply({ content: 'Ooops... ! I fell into the stairs 🤕 Can you please try again ?', ephemeral: true });
-        }
-    },
+    await sendDM(job.author, `Hey <@${job.author}> 👋\nYour job offer was approved by <@${validator.id}> ! 🎉`);
+    await addReaction(message.channel_id, message.id, '✅');
+    return 'Beep boop ! The job offer has been successfully validated ! 🤖';
+  });
 }

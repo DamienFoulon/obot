@@ -1,43 +1,41 @@
-const { SlashCommandBuilder } = require('@discordjs/builders');
-const { ActivityType } = require('discord.js');
+import { CommandTypes, Contexts, IntegrationTypes, Permissions } from '../../constants.js';
+import { ActivityTypes, setActivity } from '../../gateway.js';
+import { replyAfter } from '../../utils.js';
 
-module.exports = {
-    data: new SlashCommandBuilder()
-        .setName('set_bot_activity')
-        .setDescription('Set the bot activity')
-        .addStringOption(option => option.setName('type')
-            .setDescription('The type of activity')
-            .setRequired(true)
-            .addChoices(
-                { name: 'Playing', value: 'Playing' },
-                { name: 'Listening', value: 'Listening' },
-                { name: 'Watching', value: 'Watching' }
-            ))
-        .addStringOption(option => option.setName('activity')
-            .setDescription('The activity you want to set')
-            .setRequired(true)),
+export const data = {
+  name: 'set_bot_activity',
+  description: 'Set the bot activity',
+  type: CommandTypes.CHAT_INPUT,
+  default_member_permissions: Permissions.MANAGE_GUILD,
+  integration_types: [IntegrationTypes.GUILD_INSTALL],
+  contexts: [Contexts.GUILD],
+  options: [
+    {
+      type: 3, // STRING
+      name: 'type',
+      description: 'The type of activity',
+      required: true,
+      choices: Object.keys(ActivityTypes).map((type) => ({ name: type, value: type })),
+    },
+    {
+      type: 3, // STRING
+      name: 'activity',
+      description: 'The activity you want to set',
+      required: true,
+      max_length: 128,
+    },
+  ],
+};
 
-    async execute(interaction) {
-        const activity = interaction.options.getString('activity');
-        const activityTypeSelected = interaction.options.getString('type');
-        let activityType;
-        switch (activityTypeSelected) {
-            case 'Playing':
-                activityType = ActivityType.Playing;
-                break;
-            case 'Listening':
-                activityType = ActivityType.Listening;
-                break;
-            case 'Watching':
-                activityType = ActivityType.Watching;
-                break;
-        }
-        try {
-            interaction.client.user.setActivity(activity, { type: activityType });
-            await interaction.reply({ content: `I'm now ${activityTypeSelected} ${activity}`, ephemeral: true });
-        } catch (error) {
-            console.log(error);
-            await interaction.reply({ content: 'Ooops... ! I felt into the stairs 🤕 Can you please try again ?', ephemeral: true });
-        }
-    }
+export const requiredPermission = Permissions.MANAGE_GUILD;
+
+export async function execute(interaction, res) {
+  const option = (name) => interaction.data.options.find((opt) => opt.name === name).value;
+  const type = option('type');
+  const activity = option('activity');
+
+  await replyAfter(interaction, res, async () => {
+    await setActivity(activity, ActivityTypes[type]);
+    return `I'm now ${type} ${activity}`;
+  });
 }
