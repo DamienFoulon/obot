@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ownerOverwrite } from '../../lib/tempVoice/discord.js';
-import { createRoomRegistry } from '../../lib/tempVoice/rooms.js';
+import { RENAME_WINDOW, createRoomRegistry } from '../../lib/tempVoice/rooms.js';
 import { FakeTimers, FakeVoiceApi } from '../helpers/fakeVoiceApi.js';
 
 function setup({ creator = 'creator' } = {}) {
@@ -148,4 +148,124 @@ test('without a creator channel, nothing happens', async () => {
   await move(registry, 'u1', null, 'creator');
   await move(registry, 'u1', 'creator', null);
   assert.equal(api.calls.length, 0);
+});
+
+test("the room follows the owner's game", async () => {
+  const { api, games, registry } = setup();
+  const room = await createRoom({ api, registry }, 'u1');
+  games.u1 = 'VALORANT';
+  await registry.onPresence('g1', 'u1');
+  games.u1 = null;
+  await registry.onPresence('g1', 'u1');
+  assert.deepEqual(api.of('rename'), [['rename', room, '🎮 VALORANT · u1'], ['rename', room, '🔊 u1']]);
+});
+
+test('a presence update without a game change renames nothing', async () => {
+  const { api, games, registry } = setup();
+  games.u1 = 'VALORANT';
+  await createRoom({ api, registry }, 'u1');
+  await registry.onPresence('g1', 'u1');
+  await registry.onPresence('g1', 'u1');
+  await registry.onPresence('g1', 'u2');
+  await registry.onPresence('g2', 'u1');
+  assert.equal(api.of('rename').length, 0);
+});
+
+test('after 2 renames in 10 minutes, the room waits and takes the latest game', async () => {
+  const { api, games, registry, timers } = setup();
+  const room = await createRoom({ api, registry }, 'u1');
+  for (const game of ['A', 'B', 'C', 'D']) {
+    games.u1 = game;
+    await registry.onPresence('g1', 'u1');
+    await timers.advance(1000);
+  }
+  assert.deepEqual(api.of('rename').map(([, , name]) => name), ['🎮 A · u1', '🎮 B · u1']);
+  await timers.advance(RENAME_WINDOW);
+  assert.deepEqual(api.of('rename').map(([, , name]) => name), ['🎮 A · u1', '🎮 B · u1', '🎮 D · u1']);
+});
+
+test('a queued rename is dropped when the owner goes back to their first game', async () => {
+  const { api, games, registry, timers } = setup();
+  await createRoom({ api, registry }, 'u1');
+  for (const game of ['A', 'B', 'C', 'B']) {
+    games.u1 = game;
+    await registry.onPresence('g1', 'u1');
+  }
+  await timers.advance(RENAME_WINDOW);
+  assert.deepEqual(api.of('rename').map(([, , name]) => name), ['🎮 A · u1', '🎮 B · u1']);
+});
+
+test('a 429 is tried again after its retry_after', async () => {
+  const { api, games, registry, timers } = setup();
+  const room = await createRoom({ api, registry }, 'u1');
+  api.failing.rename = [Object.assign(new Error('Discord API error 429 on channels/x: {}'), { retryAfter: 5000 })];
+  games.u1 = 'VALORANT';
+  await registry.onPresence('g1', 'u1');
+  await timers.advance(5000);
+  assert.deepEqual(api.of('rename'), [['rename', room, '🎮 VALORANT · u1'], ['rename', room, '🎮 VALORANT · u1']]);
+  assert.equal(registry.getRoom(room).name, '🎮 VALORANT · u1');
+});
+
+test('a room renamed by hand is not renamed anymore', async () => {
+  const { api, games, registry } = setup();
+  const room = await createRoom({ api, registry }, 'u1');
+  registry.onChannelUpdate({ id: room, name: 'Chez Yaguaa' });
+  games.u1 = 'VALORANT';
+  await registry.onPresence('g1', 'u1');
+  assert.equal(api.of('rename').length, 0);
+});
+
+test("the bot's own renames are not taken for manual ones", async () => {
+  const { api, games, registry } = setup();
+  const room = await createRoom({ api, registry }, 'u1');
+  games.u1 = 'A';
+  await registry.onPresence('g1', 'u1');
+  games.u1 = 'B';
+  await registry.onPresence('g1', 'u1');
+  // The CHANNEL_UPDATE of the first rename arrives after the second one was asked
+  registry.onChannelUpdate({ id: room, name: '🎮 A · u1' });
+  registry.onChannelUpdate({ id: room, name: '🎮 B · u1' });
+  // Other changes (user limit, permissions) keep the name
+  registry.onChannelUpdate({ id: room, name: '🎮 B · u1' });
+  assert.equal(registry.getRoom(room).manual, false);
+});
+
+test('a room renamed by hand drops its queued rename', async () => {
+  const { api, games, registry, timers } = setup();
+  const room = await createRoom({ api, registry }, 'u1');
+  for (const game of ['A', 'B', 'C']) {
+    games.u1 = game;
+    await registry.onPresence('g1', 'u1');
+  }
+  registry.onChannelUpdate({ id: room, name: 'Chez Yaguaa' });
+  await timers.advance(RENAME_WINDOW);
+  assert.equal(api.of('rename').length, 2);
+});
+
+test('a room deleted by hand is forgotten, its queued rename too', async () => {
+  const { api, games, registry, timers } = setup();
+  const room = await createRoom({ api, registry }, 'u1');
+  for (const game of ['A', 'B', 'C']) {
+    games.u1 = game;
+    await registry.onPresence('g1', 'u1');
+  }
+  registry.onChannelDelete({ id: room });
+  await timers.advance(RENAME_WINDOW);
+  assert.equal(api.of('rename').length, 2);
+  assert.equal(api.of('delete').length, 0);
+  assert.equal(registry.getRoom(room), undefined);
+  assert.equal(timers.timers.length, 0);
+});
+
+test('a room deleted because it is empty drops its queued rename', async () => {
+  const { api, games, registry, timers } = setup();
+  const room = await createRoom({ api, registry }, 'u1');
+  for (const game of ['A', 'B', 'C']) {
+    games.u1 = game;
+    await registry.onPresence('g1', 'u1');
+  }
+  await move(registry, 'u1', room, null);
+  await timers.advance(RENAME_WINDOW);
+  assert.equal(api.of('rename').length, 2);
+  assert.equal(timers.timers.length, 0);
 });
