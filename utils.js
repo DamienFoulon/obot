@@ -134,3 +134,8 @@ export function parseColor(color, fallback = 0x0193cf) {
   const value = parseInt(String(color ?? '').replace('#', ''), 16);
   return Number.isNaN(value) ? fallback : value;
 }
+
+// User values shown in bold / italic must not break (or inject) Markdown
+export function escapeMarkdown(text) {
+  return String(text).replace(/([*_`~|\\>])/g, '\\$1');
+}
