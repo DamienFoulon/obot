@@ -51,9 +51,11 @@ These ones were written for a private server. They work on any server, but they 
 |---|---|---|
 | Music: a YouTube, SoundCloud, Spotify, Deezer or Apple Music link (tracks, albums, playlists) or a search, with a queue, pause, volume, loop and buttons | `/play`, `/queue`, `/skip`, `/pause`, `/resume`, `/stop`, `/volume`, `/loop` | yt-dlp, ffmpeg, a host where Discord voice works |
 | Minecraft coordinates: in a forum, each post is a world with a panel to add, edit and list its coordinates (the posts stay clean) | - (buttons in the forum) | `COORDINATES_FORUM_ID`, MySQL |
+| Temporary voice rooms: join « ➕ Créer un salon » to get your own voice channel, named after your game, deleted when empty | - | `TEMP_VOICE_CREATOR_ID`, the Presence intent |
 
-Both turn themselves off when they are not configured: without yt-dlp the music commands answer that they are
-not available, without `COORDINATES_FORUM_ID` the forum is left alone. To remove them from the code, see
+They turn themselves off when they are not configured: without yt-dlp the music commands answer that they are
+not available, without `COORDINATES_FORUM_ID` the forum is left alone, without `TEMP_VOICE_CREATOR_ID` nobody
+gets a room. To remove them from the code, see
 [Removing a feature](#removing-a-feature).
 
 
@@ -70,7 +72,7 @@ not available, without `COORDINATES_FORUM_ID` the forum is left alone. To remove
 │   ├── selects      -> one file per select menu handler
 │   └── modals
 ├── events          -> one file per Gateway event handler
-├── lib             -> feature specific helpers (lib/music, lib/coordinates...)
+├── lib             -> feature specific helpers (lib/music, lib/coordinates, lib/tempVoice...)
 ├── docs            -> designs and implementation plans of the music and coordinates features
 ├── scripts         -> maintenance scripts (voice-probe.js, coordinates-schema.sql)
 ├── test            -> tests (npm test)
@@ -103,6 +105,7 @@ In the [Developer Portal](https://discord.com/developers/applications), create a
 - **General Information** page : copy the **Application ID** into `APP_ID` and the **Public Key** into `PUBLIC_KEY`
 - **Bot** page : reset and copy the **Token** into `DISCORD_TOKEN`, and enable the **Server Members Intent**
   (a [privileged intent](https://docs.discord.com/developers/events/gateway#privileged-intents), needed for the welcome and leave messages)
+  and the **Presence Intent** (needed for the names of the temporary voice rooms)
 
 On the **Installation** page :
 
@@ -226,6 +229,23 @@ In the forum, the bot needs **View Channel**, **Send Messages in Threads**, **Ma
 **Read Message History**. A missing permission is logged at startup.
 
 
+## Temporary voice channels (private feature)
+
+Set `TEMP_VOICE_CREATOR_ID` to a voice channel, e.g. « ➕ Créer un salon ». A member who joins it gets their own
+voice channel, created right below it in the same category and named after the game they play
+(`🎮 VALORANT · Yaguaa`, or `🔊 Yaguaa` when they play nothing). The name follows their game; once someone renames
+the room by hand, the bot leaves the name alone.
+
+The owner can rename the room, set its user limit, lock it and disconnect someone. When they leave, the room goes
+to the next member; when the last member leaves, it is deleted (bots don't count).
+
+Nothing is stored: after a restart, the rooms are the voice channels of the category with an owner (a member
+allowed to manage the channel). Other channels of the category are left alone.
+
+The feature needs the **Presence Intent** (Developer Portal > Bot), and the bot needs **Manage Channels**,
+**Manage Roles** and **Move Members** in the category. A missing permission is logged at startup.
+
+
 ## Configuration
 
 ### Setup Commands
@@ -331,12 +351,21 @@ disappear. Run `npm run register` afterwards, so Discord forgets the removed com
 3. In `events/messages/message_create.js`, remove `cleanWorldMessage`
 4. Remove the `COORDINATES_FORUM_ID` variable, and drop the `coordinates` and `coordinate_panels` tables
 
+### Temporary voice channels
+
+1. Delete `lib/tempVoice`, `events/presences`, `events/channels`, `test/tempVoice` and `test/helpers/fakeVoiceApi.js`
+2. In `events/voice/voice_state_update.js`, remove `tempVoice` and `oldChannelId`
+3. In `events/basics/guild_create.js`, remove `setupTempVoice`
+4. In `gateway.js`, remove the `GuildPresences` intent, and disable the Presence Intent in the Developer Portal
+5. Remove the `TEMP_VOICE_CREATOR_ID` variable
+
 ### Job offers
 
 Delete `commands/jobs`, the `jobs` folders of `components` and `lib/jobOffer.js`, then remove the `JOB_*` variables.
 Without the coordinates, nothing else uses MySQL: `database.js`, the `DB_*` variables and `mysql2` can go too.
 
-`lib/channelPermissions.js` is shared by the music and the coordinates: delete it only when both are gone.
+`lib/channelPermissions.js` is shared by the music, the coordinates and the temporary voice rooms: delete it only
+when all three are gone.
 
 `npm test` then tells you if something still points to a removed file.
 
