@@ -373,3 +373,48 @@ test('a guild without the creator channel is left alone', async () => {
   assert.equal(api.calls.length, 0);
   assert.equal(registry.getRoom('r1'), undefined);
 });
+
+test('a reconnection keeps a manual rename', async () => {
+  const { api, games, registry } = setup();
+  const created = await createRoom({ api, registry }, 'u1');
+  registry.onChannelUpdate({ id: created, name: 'Chez nous' });
+  const renamed = { ...room(created, 'u1', 'Chez nous') };
+  await registry.restore(guild({ rooms: [renamed], voiceStates: [{ user_id: 'u1', channel_id: created }], members: [member('u1')] }));
+  games.u1 = 'VALORANT';
+  await registry.onPresence('g1', 'u1');
+  assert.equal(api.of('rename').length, 0);
+});
+
+test('a member who leaves a room while the others are being restored is not missed', async () => {
+  const { api, registry } = setup();
+  // r1's owner left: restoring it waits on Discord, meanwhile u2 leaves r2
+  const restoring = registry.restore(guild({
+    rooms: [room('r1', 'u1'), room('r2', 'u2')],
+    voiceStates: [{ user_id: 'u3', channel_id: 'r1' }, { user_id: 'u2', channel_id: 'r2' }],
+    members: [member('u2'), member('u3')],
+  }));
+  await move(registry, 'u2', 'r2', null);
+  await restoring;
+  assert.deepEqual(api.of('delete'), [['delete', 'r2']]);
+  assert.equal(registry.getRoom('r2'), undefined);
+});
+
+test("a category's member overwrite is neither an owner nor a room", async () => {
+  const { api, registry } = setup();
+  const trusted = { id: 'u8', type: 1, allow: OWNER, deny: '0' };
+  const g = guild({
+    rooms: [
+      { ...room('r1', 'u1'), permission_overwrites: [trusted, { id: 'u1', type: 1, allow: OWNER, deny: '0' }] },
+      // A fixed channel synced with the category
+      { id: 'poop', type: 2, parent_id: 'cat', name: '💩', permission_overwrites: [trusted] },
+    ],
+    voiceStates: [{ user_id: 'u1', channel_id: 'r1' }],
+    members: [member('u1')],
+  });
+  g.channels.find((channel) => channel.id === 'cat').permission_overwrites = [trusted];
+  await registry.restore(g);
+  assert.equal(registry.getRoom('r1').ownerId, 'u1');
+  assert.equal(registry.getRoom('poop'), undefined);
+  assert.equal(api.of('delete').length, 0);
+  assert.equal(api.of('unowner').length, 0);
+});

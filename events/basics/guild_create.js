@@ -8,6 +8,7 @@ export const name = 'GUILD_CREATE';
 export async function execute(guild) {
   if (guild.unavailable) return;
   setGuildVoiceStates(guild);
-  await setupGuild(guild);
+  // First: its rooms must be tracked before the voice events that follow GUILD_CREATE are handled
   await setupTempVoice(guild);
+  await setupGuild(guild);
 }

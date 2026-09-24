@@ -73,7 +73,7 @@ gets a room. To remove them from the code, see
 │   └── modals
 ├── events          -> one file per Gateway event handler
 ├── lib             -> feature specific helpers (lib/music, lib/coordinates, lib/tempVoice...)
-├── docs            -> designs and implementation plans of the music and coordinates features
+├── docs            -> designs and implementation plans of the music, coordinates and temporary voice features
 ├── scripts         -> maintenance scripts (voice-probe.js, coordinates-schema.sql)
 ├── test            -> tests (npm test)
 ├── .env            -> your credentials and IDs
@@ -365,7 +365,8 @@ Delete `commands/jobs`, the `jobs` folders of `components` and `lib/jobOffer.js`
 Without the coordinates, nothing else uses MySQL: `database.js`, the `DB_*` variables and `mysql2` can go too.
 
 `lib/channelPermissions.js` is shared by the music, the coordinates and the temporary voice rooms: delete it only
-when all three are gone.
+when all three are gone. The temporary voice rooms also use `events/voice/voice_state_update.js`,
+`lib/music/voiceStates.js` and the `GuildVoiceStates` intent: keep them when you remove only the music.
 
 `npm test` then tells you if something still points to a removed file.
 
