@@ -25,6 +25,13 @@ test('a list line: icon, escaped name and note, author or last editor', () => {
   assert.equal(formatCoordinateLine(coordinate(1, { updatedBy: 'u2' })), '🌍 **Lieu 1** — 120 64 -340 · modifiée par <@u2>');
 });
 
+test('long notes are shortened in the list, so a page stays under the Discord limit', () => {
+  const line = formatCoordinateLine(coordinate(1, { note: '_'.repeat(200), name: '_'.repeat(50) }));
+  assert.match(line, /…\* · ajoutée/);
+  const page = buildListPage({ coordinates: Array.from({ length: 10 }, (_, i) => coordinate(i, { note: '_'.repeat(200), name: '_'.repeat(50) })), total: 10, page: 0 });
+  assert.ok(texts(page).length < 4000);
+});
+
 test('a list page with its paging buttons', () => {
   const coordinates = Array.from({ length: 10 }, (_, i) => coordinate(i + 1));
   const first = buildListPage({ coordinates, total: 23, page: 0 });

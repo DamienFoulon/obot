@@ -28,6 +28,7 @@ test('a valid form', () => {
     name: 'Base principale', dimension: 'nether', x: 120, y: 64, z: -340, note: 'ferme à fer',
   });
   assert.equal(form({ note: '   ' }).value.note, null);
+  assert.equal(form({ note: 'ligne 1\n\n  ligne 2' }).value.note, 'ligne 1 ligne 2');
   assert.equal(form({ dimension: undefined }).value.dimension, 'overworld');
   assert.equal(form({ dimension: ['moon'] }).value.dimension, 'overworld');
   assert.equal(form({ dimension: ['toString'] }).value.dimension, 'overworld');

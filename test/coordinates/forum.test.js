@@ -10,9 +10,12 @@ beforeEach(() => {
   process.env.APP_ID = 'bot';
 });
 
-test("keeps the post's original message and the bot's messages, deletes the rest", () => {
+test("keeps the post's original message and the panel, deletes the rest", () => {
   assert.equal(shouldDeleteMessage({ id: 't1', channel_id: 't1', author: { id: 'u1' } }), false);
-  assert.equal(shouldDeleteMessage({ id: 'm1', channel_id: 't1', author: { id: 'bot' } }), false);
+  const panel = { id: 'm1', channel_id: 't1', author: { id: 'bot' }, components: [{ type: 17, components: [{ type: 1, components: [{ type: 2, custom_id: 'coords_add' }] }] }] };
+  assert.equal(shouldDeleteMessage(panel), false);
+  // Another message of the bot (a music "Now playing" posted in a world, for instance) is cleaned too
+  assert.equal(shouldDeleteMessage({ id: 'm4', channel_id: 't1', author: { id: 'bot' }, components: [] }), true);
   assert.equal(shouldDeleteMessage({ id: 'm2', channel_id: 't1', author: { id: 'u1' } }), true);
   assert.equal(shouldDeleteMessage({ id: 'm3', channel_id: 't1', author: { id: 'other-bot', bot: true } }), true);
 });
