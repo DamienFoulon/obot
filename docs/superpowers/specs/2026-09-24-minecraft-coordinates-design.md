@@ -62,10 +62,10 @@ Discord limits `custom_id` to 100 characters. Arguments are ids and page numbers
 | `coords_list` | panel | ephemeral list, page 0 |
 | `coords_page:<page>` | list | updates the list to that page |
 | `coords_pick_page:<page>` | picker | updates the picker to that page |
-| `coords_pick` | picker (select) | shows the detail card of the chosen coordinate |
+| `coords_pick:<page>` | picker (select) | shows the detail card of the chosen coordinate |
 | `coords_modify:<id>` | card | opens the edit modal, prefilled |
-| `coords_delete:<id>` | card | asks for confirmation |
-| `coords_delete_confirm:<id>` | confirmation | deletes, shows a confirmation |
+| `coords_delete:<id>:<page>` | card | asks for confirmation |
+| `coords_delete_confirm:<id>:<page>` | confirmation | deletes, shows a confirmation |
 | `coords_back:<page>` | card / confirmation | back to the picker page |
 | `coords_add_modal` | modal | inserts, ephemeral confirmation |
 | `coords_edit_modal:<id>` | modal | updates, ephemeral confirmation |
@@ -115,7 +115,7 @@ Order of the list and the picker: Overworld, Nether, End, then name.
 
 ## Messages (French)
 
-- Panel: container with `## 📍 Coordonnées — <post name>`, a short explanation, buttons
+- Panel: container with `## 📍 Coordonnées` (the post title already names the world), a short explanation, buttons
   `➕ Ajouter`, `✏️ Modifier`, `📜 Lister`.
 - List line: `🌍 **Base principale** — 120 64 -340` + `· *note*` when set + `· ajoutée par <@id>`
   (`modifiée par <@id>` when edited). Icons: 🌍 Overworld, 🔥 Nether, 🌌 End. 10 per page, footer
@@ -138,9 +138,9 @@ Order of the list and the picker: Overworld, Nether, End, then name.
 - `threadParents: Map<threadId, parentId>`, filled by `GUILD_CREATE` (`threads`), `THREAD_CREATE`,
   `THREAD_UPDATE`; on a miss, one `GET /channels/{id}` then cached.
 - `isWorldThread(channelId)` → parent is `COORDINATES_FORUM_ID`.
-- `shouldDeleteMessage(message, panelId)` (pure): false when not in a world thread, when `message.id ===
-  message.channel_id` (original message), when the author is the bot (`APP_ID`) and the message is the panel;
-  true otherwise.
+- `shouldDeleteMessage(message)` (pure): false for the original message (`message.id === message.channel_id`)
+  and for the bot's own messages (`APP_ID`: it only posts panels there, and the panel's `MESSAGE_CREATE` can
+  arrive before its id is stored); true otherwise. Only called for messages of world threads.
 - `ensurePanel(threadId)`: posts the panel when `coordinate_panels` has no row for the thread, or when the
   stored message doesn't exist anymore (404); stores the new id.
 - On `GUILD_CREATE` of the forum's guild: `ensurePanel` for every active post of the forum. Archived posts
