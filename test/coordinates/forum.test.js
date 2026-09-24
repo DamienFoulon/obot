@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 import {
-  isWorldThread, missingForumPermissions, rememberChannel, shouldDeleteMessage,
+  isActiveWorld, isWorldThread, missingForumPermissions, rememberChannel, shouldDeleteMessage,
 } from '../../lib/coordinates/forum.js';
 
 beforeEach(() => {
@@ -38,4 +38,12 @@ test('the forum permissions the bot needs', () => {
   const all = (1n << 10n) | (1n << 38n) | (1n << 13n) | (1n << 16n);
   assert.deepEqual(missingForumPermissions(all), []);
   assert.deepEqual(missingForumPermissions(all & ~(1n << 13n)), ['Manage Messages']);
+});
+
+test('an updated post needs its panel checked only when it is an active world', async () => {
+  const post = (archived, parentId = 'forum') => ({ id: 't1', parent_id: parentId, thread_metadata: { archived } });
+  assert.equal(await isActiveWorld(post(false)), true);
+  assert.equal(await isActiveWorld(post(true)), false);
+  assert.equal(await isActiveWorld(post(false, 'other-forum')), false);
+  assert.equal(await isActiveWorld({ id: 'general', parent_id: 'category' }), false);
 });

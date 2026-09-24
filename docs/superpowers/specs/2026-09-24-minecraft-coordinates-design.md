@@ -146,6 +146,8 @@ Order of the list and the picker: Overworld, Nether, End, then name.
 - On `GUILD_CREATE` of the forum's guild: `ensurePanel` for every active post of the forum. Archived posts
   keep their panel (it can't be deleted while nobody can post there).
 - `THREAD_CREATE` with `parent_id === COORDINATES_FORUM_ID` → `ensurePanel`.
+- `THREAD_UPDATE` of an unarchived post of the forum → `ensurePanel` (a post archived at startup, or whose
+  panel could not be posted, gets it when it comes back; THREAD_CREATE is not sent on unarchive).
 - `MESSAGE_CREATE` → `shouldDeleteMessage` → `DELETE /channels/{id}/messages/{id}`; errors are logged
   (missing *Manage Messages*).
 - `MESSAGE_DELETE` of a stored panel id → `ensurePanel` (reposts).
