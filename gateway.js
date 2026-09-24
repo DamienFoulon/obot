@@ -21,8 +21,9 @@ const manager = new WebSocketManager({
   // Guild Members is a privileged intent: it must be enabled on the Bot page of the Developer Portal
   // Message Content is not needed: the slow mode only looks at who sends a message
   // Guild Voice States: to join the voice channel of a member and to connect the music player
+  // Guild Presences (privileged too): the game of each member, to name the temporary voice rooms
   intents: GatewayIntentBits.Guilds | GatewayIntentBits.GuildMembers | GatewayIntentBits.GuildMessages
-    | GatewayIntentBits.GuildVoiceStates,
+    | GatewayIntentBits.GuildVoiceStates | GatewayIntentBits.GuildPresences,
   rest,
 });
 

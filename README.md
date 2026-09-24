@@ -2,10 +2,15 @@
 ![Logo](https://i.imgur.com/Uafhwhg.png)
 
 
-# Obot Base Discord Bot
+# Obot
 
-A clean Discord bot base, built the way Discord's official
+A Discord bot built the way Discord's official
 [getting started guide](https://docs.discord.com/developers/quick-start/getting-started) does it 🤖
+
+Obot started as a clean bot base and grew into the bot of a private Discord server: next to the generic
+features (moderation, welcome messages, announcements...), it carries features written for that server's
+own needs, like the music player and the Minecraft coordinates. They are kept in the code as they are:
+reuse them if they suit you, or remove them if you don't need them (see [Private features](#private-features)).
 
 Discord sends every interaction (slash command, button click, modal submit...) as an HTTP request
 to your app, which answers it. Next to it, a lightweight [Gateway](https://docs.discord.com/developers/events/gateway)
@@ -18,17 +23,40 @@ following the structure of the [official example app](https://github.com/discord
 
 ## Features
 
+### The base
+
 - Slash commands and user commands (right click on a member > Apps)
-- Buttons and modals, using the latest components ([Labels](https://docs.discord.com/developers/components/reference#label) in modals, [Components V2](https://docs.discord.com/developers/components/reference#container) in messages)
+- Buttons, select menus and modals, using the latest components ([Labels](https://docs.discord.com/developers/components/reference#label) in modals, [Components V2](https://docs.discord.com/developers/components/reference#container) in messages)
 - Commands and components handling: just drop a file in the right folder
 - Installation contexts support (server install / user install)
 - Events handling (Gateway): just drop a file in the `events` folder
-- Moderation: ban, kick, timeout, warn and slow mode
-- Welcome and leave messages
-- Bot activity (Playing / Listening / Watching)
-- Announcements and job offers (with a staff validation step, stored in MySQL)
-- Music: /play a YouTube, SoundCloud, Spotify, Deezer or Apple Music link (tracks, albums, playlists) or a search, with a queue, pause, volume, loop and buttons
-- Minecraft coordinates: in a forum, each post is a world with a panel to add, edit and list its coordinates (the posts stay clean)
+- Tests with the Node.js test runner (`npm test`)
+
+### Generic features
+
+| Feature | Commands | Needs |
+|---|---|---|
+| Moderation | `Ban`, `Kick`, `Timeout`, `Warn`, `SlowMode` (right click on a member > Apps) | - |
+| Welcome and leave messages | - | `WELCOME_*` / `LEAVE_*` variables |
+| Bot activity (Playing / Listening / Watching) | `/set_bot_activity` | - |
+| Announcements | `/announcement` | - |
+| Job offers, with a staff validation step | `/send_job_opener` | `JOB_*` variables, MySQL |
+| Bot information | `/obot` | - |
+
+### Private features
+
+These ones were written for a private server. They work on any server, but they are more specific:
+
+| Feature | Commands | Needs |
+|---|---|---|
+| Music: a YouTube, SoundCloud, Spotify, Deezer or Apple Music link (tracks, albums, playlists) or a search, with a queue, pause, volume, loop and buttons | `/play`, `/queue`, `/skip`, `/pause`, `/resume`, `/stop`, `/volume`, `/loop` | yt-dlp, ffmpeg, a host where Discord voice works |
+| Minecraft coordinates: in a forum, each post is a world with a panel to add, edit and list its coordinates (the posts stay clean) | - (buttons in the forum) | `COORDINATES_FORUM_ID`, MySQL |
+| Temporary voice rooms: join « ➕ Créer un salon » to get your own voice channel, named after your game, deleted when empty | - | `TEMP_VOICE_CREATOR_ID`, the Presence intent |
+
+They turn themselves off when they are not configured: without yt-dlp the music commands answer that they are
+not available, without `COORDINATES_FORUM_ID` the forum is left alone, without `TEMP_VOICE_CREATOR_ID` nobody
+gets a room. To remove them from the code, see
+[Removing a feature](#removing-a-feature).
 
 
 ## Project structure
@@ -44,7 +72,8 @@ following the structure of the [official example app](https://github.com/discord
 │   ├── selects      -> one file per select menu handler
 │   └── modals
 ├── events          -> one file per Gateway event handler
-├── lib             -> feature specific helpers
+├── lib             -> feature specific helpers (lib/music, lib/coordinates, lib/tempVoice...)
+├── docs            -> designs and implementation plans of the music, coordinates and temporary voice features
 ├── scripts         -> maintenance scripts (voice-probe.js, coordinates-schema.sql)
 ├── test            -> tests (npm test)
 ├── .env            -> your credentials and IDs
@@ -63,8 +92,8 @@ following the structure of the [official example app](https://github.com/discord
 Requires Node.js 20.12 or newer.
 
 ```bash
-  git clone https://github.com/DamienFoulon/base_discord_bot_v14
-  cd base_discord_bot_v14
+  git clone https://github.com/DamienFoulon/obot
+  cd obot
   npm install
   cp .env.sample .env
 ```
@@ -76,12 +105,14 @@ In the [Developer Portal](https://discord.com/developers/applications), create a
 - **General Information** page : copy the **Application ID** into `APP_ID` and the **Public Key** into `PUBLIC_KEY`
 - **Bot** page : reset and copy the **Token** into `DISCORD_TOKEN`, and enable the **Server Members Intent**
   (a [privileged intent](https://docs.discord.com/developers/events/gateway#privileged-intents), needed for the welcome and leave messages)
+  and the **Presence Intent** (needed for the names of the temporary voice rooms)
 
 On the **Installation** page :
 
 - In **Installation Contexts**, select **Guild Install** (and **User Install** if you want commands like `/obot` to be usable everywhere)
 - In **Default Install Settings** > **Guild Install**, add the scopes `applications.commands` and `bot`,
   and the bot permissions `Send Messages`, `Add Reactions`, `Kick Members`, `Ban Members`, `Moderate Members`, `Connect` and `Speak`
+  (drop the ones of the features you don't use)
 - Open the **Install Link** in your browser to add the bot to your server
 
 ### 2. Register the commands
@@ -97,6 +128,8 @@ on your test server only: updates will be instant.
 
 ```bash
   npm start
+  # or, restarting on each change
+  npm run dev
 ```
 
 Discord needs a public HTTPS URL to reach your app. Locally, you can use [ngrok](https://ngrok.com/) :
@@ -136,7 +169,7 @@ CREATE TABLE jobs (
 ```
 
 
-## Music
+## Music (private feature)
 
 The music commands need [yt-dlp](https://github.com/yt-dlp/yt-dlp) and [ffmpeg](https://ffmpeg.org).
 Without yt-dlp, the bot starts anyway and the music commands say they are not available.
@@ -179,7 +212,7 @@ By default, everybody in the voice channel of the bot controls the music. Set `D
 pause, volume and loop for this role and the administrators.
 
 
-## Minecraft coordinates
+## Minecraft coordinates (private feature)
 
 Set `COORDINATES_FORUM_ID` to a forum channel: each post of the forum is a world of your Minecraft server.
 In each post, the bot keeps a panel to add, edit, delete and list the coordinates of that world (name, X Y Z,
@@ -194,6 +227,23 @@ The feature needs the MySQL database (`DB_*` variables) with these tables:
 
 In the forum, the bot needs **View Channel**, **Send Messages in Threads**, **Manage Messages** and
 **Read Message History**. A missing permission is logged at startup.
+
+
+## Temporary voice channels (private feature)
+
+Set `TEMP_VOICE_CREATOR_ID` to a voice channel, e.g. « ➕ Créer un salon ». A member who joins it gets their own
+voice channel, created right below it in the same category and named after the game they play
+(`🎮 VALORANT · Yaguaa`, or `🔊 Yaguaa` when they play nothing). The name follows their game; once someone renames
+the room by hand, the bot leaves the name alone.
+
+The owner can rename the room, set its user limit, lock it and disconnect someone. When they leave, the room goes
+to the next member; when the last member leaves, it is deleted (bots don't count).
+
+Nothing is stored: after a restart, the rooms are the voice channels of the category with an owner (a member
+allowed to manage the channel). Other channels of the category are left alone.
+
+The feature needs the **Presence Intent** (Developer Portal > Bot), and the bot needs **Manage Channels**,
+**Manage Roles** and **Move Members** in the category. A missing permission is logged at startup.
 
 
 ## Configuration
@@ -277,6 +327,48 @@ export async function execute(member) {
 
 Some events need an extra intent, to add in `gateway.js`. Before adding a privileged one,
 check [whether you really need it](https://docs.discord.com/developers/gateway/you-might-not-need-a-privileged-intent).
+
+
+## Removing a feature
+
+Commands, components and events are loaded from their folders: deleting their files is enough for them to
+disappear. Run `npm run register` afterwards, so Discord forgets the removed commands.
+
+### Music
+
+1. Delete `commands/music`, `components/buttons/music`, `lib/music`, `events/voice`, `scripts/voice-probe.js`
+   and the music tests (the `test/*.test.js` files, `test/resolvers`, `test/fixtures` and `test/helpers/fakes.js`)
+2. In `events/basics/guild_create.js`, remove `setGuildVoiceStates`
+3. In `app.js`, remove `checkYtDlp`
+4. In `gateway.js`, remove `setVoicePayloadSender` and the `GuildVoiceStates` intent
+5. `npm uninstall @discordjs/voice opusscript`, and remove the `YTDLP_*` and `DJ_ROLE_ID` variables
+
+### Minecraft coordinates
+
+1. Delete `lib/coordinates`, the `coordinates` folders of `components`, `events/messages/message_delete.js`,
+   `events/threads`, `scripts/coordinates-schema.sql` and `test/coordinates`
+2. In `events/basics/guild_create.js`, remove `setupGuild`
+3. In `events/messages/message_create.js`, remove `cleanWorldMessage`
+4. Remove the `COORDINATES_FORUM_ID` variable, and drop the `coordinates` and `coordinate_panels` tables
+
+### Temporary voice channels
+
+1. Delete `lib/tempVoice`, `events/presences`, `events/channels`, `test/tempVoice` and `test/helpers/fakeVoiceApi.js`
+2. In `events/voice/voice_state_update.js`, remove `tempVoice` and `oldChannelId`
+3. In `events/basics/guild_create.js`, remove `setupTempVoice`
+4. In `gateway.js`, remove the `GuildPresences` intent, and disable the Presence Intent in the Developer Portal
+5. Remove the `TEMP_VOICE_CREATOR_ID` variable
+
+### Job offers
+
+Delete `commands/jobs`, the `jobs` folders of `components` and `lib/jobOffer.js`, then remove the `JOB_*` variables.
+Without the coordinates, nothing else uses MySQL: `database.js`, the `DB_*` variables and `mysql2` can go too.
+
+`lib/channelPermissions.js` is shared by the music, the coordinates and the temporary voice rooms: delete it only
+when all three are gone. The temporary voice rooms also use `events/voice/voice_state_update.js`,
+`lib/music/voiceStates.js` and the `GuildVoiceStates` intent: keep them when you remove only the music.
+
+`npm test` then tells you if something still points to a removed file.
 
 
 ## Good to know
