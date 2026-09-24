@@ -269,3 +269,107 @@ test('a room deleted because it is empty drops its queued rename', async () => {
   assert.equal(api.of('rename').length, 2);
   assert.equal(timers.timers.length, 0);
 });
+
+const OWNER = String((1n << 4n) | (1n << 28n) | (1n << 24n));
+
+function guild({ rooms = [], voiceStates = [], members = [] } = {}) {
+  return {
+    id: 'g1',
+    channels: [
+      { id: 'cat', type: 4, name: 'Vocal' },
+      { id: 'creator', type: 2, parent_id: 'cat', name: '➕ Créer un salon', permission_overwrites: [] },
+      // A fixed channel of the category: no owner overwrite
+      { id: 'fixed', type: 2, parent_id: 'cat', name: 'LaGrosseBertha', permission_overwrites: [{ id: 'u9', type: 1, allow: '1049600', deny: '0' }] },
+      // A channel of another category, with a user who can manage it
+      { id: 'elsewhere', type: 2, parent_id: 'other', name: 'Soirée-ciné', permission_overwrites: [{ id: 'u9', type: 1, allow: OWNER, deny: '0' }] },
+      ...rooms,
+    ],
+    voice_states: voiceStates,
+    members,
+  };
+}
+
+const room = (id, ownerId, name = `🔊 ${ownerId}`) => ({
+  id, type: 2, parent_id: 'cat', name, permission_overwrites: [{ id: 'g1', type: 0, allow: '0', deny: '0' }, { id: ownerId, type: 1, allow: OWNER, deny: '0' }],
+});
+
+test('at startup, the occupied rooms are tracked again, the empty ones deleted', async () => {
+  const { api, registry } = setup();
+  await registry.restore(guild({
+    rooms: [room('r1', 'u1'), room('r2', 'u2')],
+    voiceStates: [{ user_id: 'u1', channel_id: 'r1' }, { user_id: 'u9', channel_id: 'fixed' }],
+    members: [member('u1'), member('u9')],
+  }));
+  assert.equal(registry.getRoom('r1').ownerId, 'u1');
+  assert.deepEqual(registry.getRoom('r1').members, ['u1']);
+  assert.deepEqual(api.of('delete'), [['delete', 'r2']]);
+  // Fixed channels and channels of other categories are left alone
+  assert.equal(registry.getRoom('fixed'), undefined);
+  assert.equal(registry.getRoom('elsewhere'), undefined);
+  assert.equal(api.of('rename').length, 0);
+});
+
+test('at startup, a room with only a bot inside is deleted', async () => {
+  const { api, registry } = setup();
+  await registry.restore(guild({
+    rooms: [room('r1', 'u1')],
+    voiceStates: [{ user_id: 'bot', channel_id: 'r1' }],
+    members: [{ user: { id: 'bot', username: 'Obot', bot: true } }],
+  }));
+  assert.deepEqual(api.of('delete'), [['delete', 'r1']]);
+});
+
+test('at startup, a room whose owner left goes to a member still inside', async () => {
+  const { api, games, registry } = setup();
+  games.u2 = 'Minecraft';
+  await registry.restore(guild({
+    rooms: [room('r1', 'u1')],
+    voiceStates: [{ user_id: 'u2', channel_id: 'r1' }],
+    members: [member('u2')],
+  }));
+  assert.equal(registry.getRoom('r1').ownerId, 'u2');
+  assert.deepEqual(api.of('owner'), [['owner', 'r1', 'u2']]);
+  assert.deepEqual(api.of('unowner'), [['unowner', 'r1', 'u1']]);
+  assert.deepEqual(api.of('rename'), [['rename', 'r1', '🎮 Minecraft · u2']]);
+});
+
+test("at startup, the room takes the owner's current game", async () => {
+  const { api, games, registry } = setup();
+  games.u1 = 'VALORANT';
+  await registry.restore(guild({ rooms: [room('r1', 'u1')], voiceStates: [{ user_id: 'u1', channel_id: 'r1' }], members: [member('u1')] }));
+  assert.deepEqual(api.of('rename'), [['rename', 'r1', '🎮 VALORANT · u1']]);
+});
+
+test('after a restart, a room renamed by hand is named again once, then a new manual rename wins', async () => {
+  const { api, games, registry } = setup();
+  await registry.restore(guild({ rooms: [room('r1', 'u1', 'Chez moi')], voiceStates: [{ user_id: 'u1', channel_id: 'r1' }], members: [member('u1')] }));
+  // Nothing tells the bot it was renamed by hand before the restart (accepted in the spec)
+  assert.deepEqual(api.of('rename'), [['rename', 'r1', '🔊 u1']]);
+  registry.onChannelUpdate({ id: 'r1', name: 'Chez nous' });
+  games.u1 = 'VALORANT';
+  await registry.onPresence('g1', 'u1');
+  assert.equal(api.of('rename').length, 1);
+});
+
+test('a second GUILD_CREATE (reconnection) neither duplicates nor keeps deleted rooms', async () => {
+  const { api, games, registry, timers } = setup();
+  const created = await createRoom({ api, registry }, 'u1');
+  for (const game of ['A', 'B', 'C']) {
+    games.u1 = game;
+    await registry.onPresence('g1', 'u1');
+  }
+  // Meanwhile, the room was deleted by hand while the bot was disconnected
+  await registry.restore(guild({ rooms: [room('r1', 'u2')], voiceStates: [{ user_id: 'u2', channel_id: 'r1' }], members: [member('u2')] }));
+  assert.equal(registry.getRoom(created), undefined);
+  assert.equal(timers.timers.length, 0);
+  await registry.restore(guild({ rooms: [room('r1', 'u2')], voiceStates: [{ user_id: 'u2', channel_id: 'r1' }], members: [member('u2')] }));
+  assert.deepEqual(registry.getRoom('r1').members, ['u2']);
+  assert.equal(api.of('delete').length, 0);
+});
+
+test('a guild without the creator channel is left alone', async () => {
+  const { api, registry } = setup();
+  await registry.restore({ id: 'g2', channels: [room('r1', 'u1')], voice_states: [], members: [] });
+  assert.equal(api.calls.length, 0);
+  assert.equal(registry.getRoom('r1'), undefined);
+});
