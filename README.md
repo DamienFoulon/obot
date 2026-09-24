@@ -28,6 +28,7 @@ following the structure of the [official example app](https://github.com/discord
 - Bot activity (Playing / Listening / Watching)
 - Announcements and job offers (with a staff validation step, stored in MySQL)
 - Music: /play a YouTube, SoundCloud, Spotify, Deezer or Apple Music link (tracks, albums, playlists) or a search, with a queue, pause, volume, loop and buttons
+- Minecraft coordinates: in a forum, each post is a world with a panel to add, edit and list its coordinates (the posts stay clean)
 
 
 ## Project structure
@@ -40,10 +41,11 @@ following the structure of the [official example app](https://github.com/discord
 │   └── music
 ├── components      -> one file per button / modal handler
 │   ├── buttons
+│   ├── selects      -> one file per select menu handler
 │   └── modals
 ├── events          -> one file per Gateway event handler
 ├── lib             -> feature specific helpers
-├── scripts         -> maintenance scripts (voice-probe.js)
+├── scripts         -> maintenance scripts (voice-probe.js, coordinates-schema.sql)
 ├── test            -> tests (npm test)
 ├── .env            -> your credentials and IDs
 ├── app.js          -> main entrypoint, receives the interactions
@@ -175,6 +177,23 @@ The bot joins the channel and plays a 10 s tone.
 
 By default, everybody in the voice channel of the bot controls the music. Set `DJ_ROLE_ID` to keep skip, stop,
 pause, volume and loop for this role and the administrators.
+
+
+## Minecraft coordinates
+
+Set `COORDINATES_FORUM_ID` to a forum channel: each post of the forum is a world of your Minecraft server.
+In each post, the bot keeps a panel to add, edit, delete and list the coordinates of that world (name, X Y Z,
+dimension, optional note). Everybody can manage them, the answers are only visible to the member who clicked.
+Every other message posted in the forum's posts is deleted, except the post's original message.
+
+The feature needs the MySQL database (`DB_*` variables) with these tables:
+
+```bash
+  mysql -h <DB_HOST> -u <DB_USER> -p <DB_NAME> < scripts/coordinates-schema.sql
+```
+
+In the forum, the bot needs **View Channel**, **Send Messages in Threads**, **Manage Messages** and
+**Read Message History**. A missing permission is logged at startup.
 
 
 ## Configuration
