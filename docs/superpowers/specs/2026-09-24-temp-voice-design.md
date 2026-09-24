@@ -6,16 +6,16 @@ Branch: `feat/temp-voice` (from `master`)
 ## Goal
 
 On « Les Copains », the 7 fixed voice channels of the `🔊 Vocal` category are replaced by temporary ones.
-A member who joins **« ➕ Créer un salon »** gets their own voice channel, named after the game they play with a
-joke, and the channel disappears when nobody is left in it.
+A member who joins **« ➕ Créer un salon »** gets their own voice channel, named after the game they play, and the
+channel disappears when nobody is left in it.
 
 ## Decisions
 
 - **Creator channel**: a fixed voice channel whose id is `TEMP_VOICE_CREATOR_ID`. Without it, the feature is off.
   Rooms are created in the creator's category, right below it.
-- **Name**: `🎮 {game} · {name} {joke}`, e.g. `🎮 Valorant · Yaguaa en chain loose`. Without a game:
-  `🔊 {name} {joke}` with a generic joke. `{name}` is the member's server nickname, else their global name,
-  else their username. The joke is drawn at random from a list per game (French, see below).
+- **Name**: `🎮 {game} · {name}`, e.g. `🎮 VALORANT · Yaguaa`. Without a game: `🔊 {name}`. `{game}` is the
+  activity name as Discord gives it. `{name}` is the member's server nickname, else their global name, else
+  their username.
 - **The name follows the owner's game**: when the owner starts, changes or stops playing, the room is renamed.
 - **Manual rename wins**: once the room's name is changed by someone else than the bot, the bot stops renaming it.
 - **Owner rights** (native Discord, no custom UI): the owner gets, on their room only, *Manage Channel*
@@ -28,13 +28,12 @@ joke, and the channel disappears when nobody is left in it.
   and other than a fixed channel is a room candidate: its owner is the member whose overwrite allows
   *Manage Channel*. Candidates with no such overwrite are left alone (fixed channels created by hand).
   Empty rooms are deleted, occupied rooms are tracked again, with manual rename detection starting fresh.
-- **Language**: French for the channel names, like the coordinates.
 
 ## Architecture
 
 ```
 lib/tempVoice/
-├── names.js       -> buildRoomName({ game, name }, random) and the jokes lists (pure)
+├── names.js       -> buildRoomName({ game, name }) (pure)
 ├── presences.js   -> userId -> current game, per guild (activity type 0 "Playing")
 └── rooms.js       -> the rooms: create, move, owner transfer, delete, rename queue, restore at startup
 events/voice/voice_state_update.js   (modified) -> + temp voice, BEFORE updateVoiceState (needs the old channel)
@@ -45,7 +44,7 @@ events/basics/guild_create.js        (modified) -> + presences, restore the room
 gateway.js                            (modified) -> + GuildPresences intent (privileged)
 ```
 
-`rooms.js` gets its Discord calls injected (`createRoomRegistry({ api, now, random })`), like the music player
+`rooms.js` gets its Discord calls injected (`createRoomRegistry({ api, now })`), like the music player
 registry, so the tests run with a fake API and a fake clock.
 
 ### Data kept in memory
@@ -98,25 +97,8 @@ At startup, a missing permission is logged, like the coordinates forum.
 
 `names.js`:
 
-- Game lookup: case-insensitive match of the activity name against patterns, the first match wins. The displayed
-  game is the activity name as Discord gives it, except for known games, which use the short label below.
-- Length: Discord allows 100 characters. The name is cut first (with `…`), then the game.
+- Discord allows 100 characters in a channel name: the member's name is cut first (with `…`), then the game.
 - Markdown and mentions don't render in channel names: no escaping needed.
-
-| Pattern | Label | Jokes |
-|---|---|---|
-| `valorant` | Valorant | en chain loose · bloqué Gold 3 · qui blame ses mates · en unrank détente (mensonge) · 0/22 mais le mental est là |
-| `minecraft` | Minecraft | qui supprime le monde · a encore oublié son lit · cherche des diamants depuis 2025 · qui note jamais ses coords |
-| `counter-strike` | CS | qui a enfin convaincu Lenny · rush B sans réfléchir · achète une AWP avec 800 $ |
-| `smash` | Smash | qui va se faire monter en l'air · spamme le même coup · s'entraîne jour et nuit (ça se voit pas) |
-| `mario kart` | Mario Kart | carapace bleue dans le dos · dernier mais digne · qui coupe par l'herbe |
-| `fortnite` | Fortnite | qui construit un bunker · top 1 dans ses rêves |
-| `ea sports fc\|fifa` | EA FC | qui rage sur l'arbitre · qui joue que la profondeur |
-| `palworld` | Palworld | qui fait crasher la Play · pose 1000 mobs |
-| `grand theft auto\|gta` | GTA | qui attend le 6 depuis 2013 · au volant sans permis |
-| `ark` (whole word) | ARK | mangé par un dino · qui farm depuis 3 h |
-| any other game | the activity name | en pleine session · qui tryhard · en mode chill (non) · promis c'est la dernière |
-| no game | — (`🔊` prefix) | attend que ça joue · fait la causette · vient voc t'es obligé · papote en attendant |
 
 ## Error handling
 
@@ -128,8 +110,8 @@ At startup, a missing permission is logged, like the coordinates forum.
 
 ## Tests (`node --test`)
 
-- `names.js`: format with and without game, known game label and jokes, unknown game, fallback name order,
-  100 characters cut, deterministic with an injected `random`.
+- `names.js`: format with and without game, fallback name order (nickname, global name, username),
+  100 characters cut.
 - `presences.js`: Playing activity picked, other activity types ignored, no activity → no game.
 - `rooms.js` with a fake API and clock: creation and move, second join moves back to the existing room,
   double event creates one room, move failure deletes the room, last human leaves → deleted, bots don't count,
