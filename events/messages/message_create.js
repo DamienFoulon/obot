@@ -1,3 +1,4 @@
+import { cleanWorldMessage } from '../../lib/coordinates/forum.js';
 import { isInSlowMode, removeFromSlowMode } from '../../lib/slowMode.js';
 import { DiscordRequest, auditLogReason, sendMessage } from '../../utils.js';
 
@@ -6,6 +7,9 @@ export const name = 'MESSAGE_CREATE';
 const SLOW_MODE_SECONDS = 30;
 
 export async function execute(message) {
+  // In the coordinates forum, only the posts' original messages and the panels stay
+  if (await cleanWorldMessage(message)) return;
+
   if (!message.guild_id || message.author.bot || !isInSlowMode(message.author.id)) return;
 
   try {
