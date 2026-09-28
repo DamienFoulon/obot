@@ -1,9 +1,9 @@
-import { ensurePanel, isWorldThread, rememberChannel } from '../../lib/coordinates/forum.js';
+import { rememberChannel } from '../../lib/coordinates/forum.js';
 
 export const name = 'THREAD_CREATE';
 
-// A new post in the coordinates forum is a new world: it gets its panel
+// A new post in the coordinates forum gets its panel with its original message (MESSAGE_CREATE):
+// Discord refuses any message in a post before it
 export async function execute(thread) {
   rememberChannel(thread);
-  if (await isWorldThread(thread.id, thread.parent_id)) await ensurePanel(thread.id);
 }

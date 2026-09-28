@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 import {
-  isActiveWorld, isWorldThread, missingForumPermissions, rememberChannel, shouldDeleteMessage,
+  isActiveWorld, isPostStarter, isWorldThread, missingForumPermissions, rememberChannel, shouldDeleteMessage,
 } from '../../lib/coordinates/forum.js';
 
 beforeEach(() => {
@@ -18,6 +18,11 @@ test("keeps the post's original message and the panel, deletes the rest", () => 
   assert.equal(shouldDeleteMessage({ id: 'm4', channel_id: 't1', author: { id: 'bot' }, components: [] }), true);
   assert.equal(shouldDeleteMessage({ id: 'm2', channel_id: 't1', author: { id: 'u1' } }), true);
   assert.equal(shouldDeleteMessage({ id: 'm3', channel_id: 't1', author: { id: 'other-bot', bot: true } }), true);
+});
+
+test("a post's original message has the id of the post", () => {
+  assert.equal(isPostStarter({ id: 't1', channel_id: 't1' }), true);
+  assert.equal(isPostStarter({ id: 'm1', channel_id: 't1' }), false);
 });
 
 test('world threads are the posts of the coordinates forum', async () => {
