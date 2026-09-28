@@ -1,4 +1,5 @@
 import { setupGuild } from '../../lib/coordinates/forum.js';
+import { litter } from '../../lib/litter/index.js';
 import { setGuildVoiceStates } from '../../lib/music/voiceStates.js';
 
 export const name = 'GUILD_CREATE';
@@ -8,4 +9,5 @@ export async function execute(guild) {
   if (guild.unavailable) return;
   setGuildVoiceStates(guild);
   await setupGuild(guild);
+  await litter.setup(guild);
 }
