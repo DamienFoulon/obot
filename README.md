@@ -52,10 +52,12 @@ These ones were written for a private server. They work on any server, but they 
 | Music: a YouTube, SoundCloud, Spotify, Deezer or Apple Music link (tracks, albums, playlists) or a search, with a queue, pause, volume, loop and buttons | `/play`, `/queue`, `/skip`, `/pause`, `/resume`, `/stop`, `/volume`, `/loop` | yt-dlp, ffmpeg, a host where Discord voice works |
 | Minecraft coordinates: in a forum, each post is a world with a panel to add, edit and list its coordinates (the posts stay clean) | - (buttons in the forum) | `COORDINATES_FORUM_ID`, MySQL |
 | Temporary voice rooms: join « ➕ Créer un salon » to get your own voice channel, named after your game, deleted when empty | - | `TEMP_VOICE_CREATOR_ID`, the Presence intent |
+| Litière de Pipette: a 💩 user command that strips a member of their roles and locks them in a hidden category, directly for administrators or after a 4-voice vote, until they are released the same way | `Litière 💩` (right click on a member > Apps) | `LITTER_CHANNEL_ID`, MySQL |
 
 They turn themselves off when they are not configured: without yt-dlp the music commands answer that they are
 not available, without `COORDINATES_FORUM_ID` the forum is left alone, without `TEMP_VOICE_CREATOR_ID` nobody
-gets a room. To remove them from the code, see
+gets a room, without `LITTER_CHANNEL_ID` the litter command says it is not configured. To remove them from the
+code, see
 [Removing a feature](#removing-a-feature).
 
 
@@ -72,9 +74,9 @@ gets a room. To remove them from the code, see
 │   ├── selects      -> one file per select menu handler
 │   └── modals
 ├── events          -> one file per Gateway event handler
-├── lib             -> feature specific helpers (lib/music, lib/coordinates, lib/tempVoice...)
-├── docs            -> designs and implementation plans of the music, coordinates and temporary voice features
-├── scripts         -> maintenance scripts (voice-probe.js, coordinates-schema.sql)
+├── lib             -> feature specific helpers (lib/music, lib/coordinates, lib/tempVoice, lib/litter...)
+├── docs            -> designs and implementation plans of the music, coordinates, temporary voice and litter features
+├── scripts         -> maintenance scripts (voice-probe.js, coordinates-schema.sql, litter-schema.sql)
 ├── test            -> tests (npm test)
 ├── .env            -> your credentials and IDs
 ├── app.js          -> main entrypoint, receives the interactions
@@ -246,6 +248,33 @@ The feature needs the **Presence Intent** (Developer Portal > Bot), and the bot 
 **Manage Roles** and **Move Members** in the category. A missing permission is logged at startup.
 
 
+## Litière de Pipette (private feature)
+
+A running joke: right click on a member > Apps > **Litière 💩**. An administrator sends them to the litter
+at once; anybody else opens a public vote in the current channel, and the 4th voice (the author counts for
+one) sends them. A vote lasts 5 minutes. The same command on a member of the litter releases them (admin) or
+opens a release vote.
+
+In the litter, the member loses all their roles (saved to be given back), gets the role `💩` and the
+nickname `💩`, only sees the litter category, and is dragged to its voice channel. The bot keeps them
+there: roles given back by hand, a changed nickname or a leave-and-rejoin are undone until they are released.
+
+Set `LITTER_CHANNEL_ID` to the voice channel of the litter (its category is hidden with it). The bot creates
+the role `💩` and, on every category and channel outside the litter, a deny overwrite for it (at startup, on
+new channels, and before each sending). The feature needs the MySQL database (`DB_*` variables) with this
+table:
+
+```bash
+  mysql -h <DB_HOST> -u <DB_USER> -p <DB_NAME> < scripts/litter-schema.sql
+```
+
+The bot needs **Manage Roles** (on every channel: an overwrite can only be written where the bot has it, a
+refused channel is logged and stays visible), **Manage Nicknames**, **Move Members** and **Connect** in the litter
+voice channel, and its role must be above the roles of the members to send: the owner, the bots and the members
+with a role above the bot's are refused. The role `💩` is created at the bottom of the role list.
+The messages of this feature are in French.
+
+
 ## Configuration
 
 ### Setup Commands
@@ -353,11 +382,19 @@ disappear. Run `npm run register` afterwards, so Discord forgets the removed com
 
 ### Temporary voice channels
 
-1. Delete `lib/tempVoice`, `events/presences`, `events/channels`, `test/tempVoice` and `test/helpers/fakeVoiceApi.js`
+1. Delete `lib/tempVoice`, `events/presences`, `events/channels/channel_delete.js`, `test/tempVoice` and
+   `test/helpers/fakeVoiceApi.js`; in `events/channels/channel_update.js`, remove `tempVoice`
 2. In `events/voice/voice_state_update.js`, remove `tempVoice` and `oldChannelId`
 3. In `events/basics/guild_create.js`, remove `setupTempVoice`
 4. In `gateway.js`, remove the `GuildPresences` intent, and disable the Presence Intent in the Developer Portal
 5. Remove the `TEMP_VOICE_CREATOR_ID` variable
+
+### Litière de Pipette
+
+1. Delete `lib/litter`, `commands/moderation/litter.js`, `components/buttons/litter`, `events/members/guild_member_update.js`,
+   `events/channels/channel_create.js`, `scripts/litter-schema.sql`, `test/litter` and the `test/helpers/fakeLitter*.js` files
+2. In `events/basics/guild_create.js`, `events/members/guild_member_add.js` and `events/channels/channel_update.js`, remove `litter`
+3. Remove the `LITTER_CHANNEL_ID` variable, and drop the `litter_members` table
 
 ### Job offers
 

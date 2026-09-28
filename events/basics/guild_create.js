@@ -1,4 +1,5 @@
 import { setupGuild } from '../../lib/coordinates/forum.js';
+import { litter } from '../../lib/litter/index.js';
 import { setGuildVoiceStates } from '../../lib/music/voiceStates.js';
 import { setupTempVoice } from '../../lib/tempVoice/index.js';
 
@@ -11,4 +12,5 @@ export async function execute(guild) {
   // First: its rooms must be tracked before the voice events that follow GUILD_CREATE are handled
   await setupTempVoice(guild);
   await setupGuild(guild);
+  await litter.setup(guild);
 }
