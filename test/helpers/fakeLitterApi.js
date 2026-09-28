@@ -33,6 +33,8 @@ export function createFakeApi() {
 
   const api = {
     guild, channels, members, calls, messages, edits: 0, failSend: false,
+    // Channel ids whose overwrite PUT is refused, and whether the member PATCH is refused
+    failPutOn: new Set(), failPatch: false,
 
     async fetchGuild() { return guild; },
     async fetchRoles() { return guild.roles; },
@@ -41,6 +43,7 @@ export function createFakeApi() {
     async fetchMember(guildId, userId) { return members.get(userId) ?? null; },
 
     async patchMember(guildId, userId, body) {
+      if (api.failPatch) throw new Error('Discord API error 403 on guilds/g/members/x: {"message":"Missing Permissions","code":50013}');
       calls.push(['patchMember', userId, body]);
       Object.assign(members.get(userId), body);
     },
@@ -54,6 +57,7 @@ export function createFakeApi() {
       return role;
     },
     async putOverwrite(channelId, roleId, { allow, deny }) {
+      if (api.failPutOn.has(channelId)) throw new Error(`Discord API error 403 on channels/${channelId}/permissions/x: {"message":"Missing Access","code":50001}`);
       calls.push(['putOverwrite', channelId]);
       const channel = channels.find((candidate) => candidate.id === channelId);
       channel.permission_overwrites = [

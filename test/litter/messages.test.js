@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  REFUSALS, REPLIES, buildReleased, buildSent, buildVote, buildVoteExpired, buildVoteFailed, buildVoteReached, voteLink,
+  REFUSALS, REPLIES, buildReleased, buildSent, buildVote, buildVoteExpired, buildVoteFailed, buildVoteForgotten, buildVoteOverruled,
+  buildVoteReached, voteLink,
 } from '../../lib/litter/messages.js';
 
 const vote = (extra = {}) => ({
@@ -35,6 +36,10 @@ test('the results drop the button', () => {
   });
   assert.equal(buildVoteFailed(full, "<@t> n'est plus sur le serveur 👀").content, "⌛ Trop tard : <@t> n'est plus sur le serveur 👀");
   assert.equal(voteLink(full), 'https://discord.com/channels/g/c/m');
+  assert.deepEqual(buildVoteOverruled(full), {
+    content: '⌛ Vote clos : un admin a tranché pour <@t>.', allowed_mentions: { users: ['t'] }, components: [],
+  });
+  assert.deepEqual(buildVoteForgotten(), { content: '⌛ Ce vote est terminé.', allowed_mentions: { users: [] }, components: [] });
 });
 
 test('announcements mention the target and the author only', () => {

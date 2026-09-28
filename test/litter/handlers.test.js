@@ -157,7 +157,7 @@ test('clicks add voices and the 4th one sends the member', async () => {
   assert.deepEqual(callsOf('moveToVoice'), [['moveToVoice', 'alice', 'litter']]);
   assert.equal(votes.get(vote.id), null);
   // A click on the finished vote removes what is left of the button
-  assert.deepEqual(await clickBy(vote.id, 'fay'), { type: UPDATE, data: { components: [] } });
+  assert.deepEqual(await clickBy(vote.id, 'fay'), { type: UPDATE, data: { content: '⌛ Ce vote est terminé.', allowed_mentions: { users: [] }, components: [] } });
 });
 
 test('the command on a target with an open vote adds a voice and links the vote', async () => {
@@ -180,7 +180,7 @@ test('a vote expires after 5 minutes: the message says so, a late click removes 
   await timers[0].fn();
   assert.equal(api.messages[0].content, '⌛ Vote expiré : <@alice> reste où il est.');
   assert.deepEqual(api.messages[0].components, []);
-  assert.deepEqual(await clickBy(vote.id, 'carl'), { type: UPDATE, data: { components: [] } });
+  assert.deepEqual(await clickBy(vote.id, 'carl'), { type: UPDATE, data: { content: '⌛ Ce vote est terminé.', allowed_mentions: { users: [] }, components: [] } });
   assert.equal(await litter.command(command('alice', { userId: 'carl' })), 'Vote lancé 👇');
   assert.equal(api.messages.length, 2);
 });
@@ -238,7 +238,7 @@ test('when the vote message cannot be sent, no vote stays open', async () => {
 });
 
 test('a click on a vote the bot forgot removes the button', async () => {
-  assert.deepEqual(await clickBy('42', 'carl'), { type: UPDATE, data: { components: [] } });
+  assert.deepEqual(await clickBy('42', 'carl'), { type: UPDATE, data: { content: '⌛ Ce vote est terminé.', allowed_mentions: { users: [] }, components: [] } });
 });
 
 const event = (userId, roles, nick) => ({ user: { id: userId, username: userId }, roles, nick });
@@ -318,4 +318,68 @@ test("a new channel gets its overwrite, one in the litter gets an allow, the bot
   const afterLitter = api.calls.length;
   await litter.channelChanged({ id: 'far', guild_id: 'other', type: 0, parent_id: null, permission_overwrites: [] });
   assert.equal(api.calls.length, afterLitter);
+});
+
+test('a channel where the overwrite is refused is logged and skipped, the others are still hidden', async () => {
+  api.failPutOn.add('cat-chat');
+  const errors = [];
+  const original = console.error;
+  console.error = (...args) => errors.push(args.join(' '));
+  try {
+    const reply = await litter.command(command('alice', admin));
+    assert.equal(reply, "C'est fait, direction la litière 💩");
+    assert.deepEqual(callsOf('putOverwrite').map(([, id]) => id), ['cat-litter', 'litter', 'general']);
+    assert.equal(errors.length, 1);
+    assert.match(errors[0], /cat-chat/);
+    // The refused channel is tried again at the next need
+    await litter.setup({ id: 'g', roles: api.guild.roles, channels: api.channels });
+    assert.equal(errors.length, 2);
+  } finally {
+    console.error = original;
+  }
+});
+
+test('a click on a vote the bot forgot says the vote is over and removes the button', async () => {
+  assert.deepEqual(await clickBy('42', 'carl'), {
+    type: UPDATE, data: { content: '⌛ Ce vote est terminé.', allowed_mentions: { users: [] }, components: [] },
+  });
+});
+
+test('the lock logs a Discord error instead of throwing, so the event handler goes on', async () => {
+  await litter.command(command('alice', admin));
+  api.failPatch = true;
+  const errors = [];
+  const original = console.error;
+  console.error = (...args) => errors.push(args.join(' '));
+  try {
+    await litter.enforce('g', event('alice', ['cop'], 'Ali'));
+    assert.equal(errors.length, 1);
+    assert.match(errors[0], /Missing Permissions/);
+  } finally {
+    console.error = original;
+  }
+});
+
+test('when the PATCH fails on a sending, the member is not recorded in the litter', async () => {
+  api.failPatch = true;
+  await assert.rejects(litter.send('g', 'alice', 'test'), /Missing Permissions/);
+  assert.equal(store.rows.has('g:alice'), false);
+  // A member already in the litter keeps their row when a later PATCH fails
+  api.failPatch = false;
+  await litter.send('g', 'alice', 'test');
+  api.failPatch = true;
+  await assert.rejects(litter.send('g', 'alice', 'test'));
+  assert.deepEqual(store.rows.get('g:alice'), { roles: ['cop'], nick: 'Ali' });
+});
+
+test('an admin action closes the open votes of the target', async () => {
+  await litter.command(command('alice', { userId: 'bob' }));
+  const vote = votes.find('g', 'alice', 'litter');
+  await litter.command(command('alice', admin));
+  assert.equal(votes.get(vote.id), null);
+  assert.equal(api.messages[0].content, '⌛ Vote clos : un admin a tranché pour <@alice>.');
+  assert.deepEqual(api.messages[0].components, []);
+  assert.deepEqual(timers.length, 1);
+  await timers[0].fn();
+  assert.equal(api.messages[0].content, '⌛ Vote clos : un admin a tranché pour <@alice>.');
 });

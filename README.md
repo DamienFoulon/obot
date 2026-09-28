@@ -217,8 +217,10 @@ table:
   mysql -h <DB_HOST> -u <DB_USER> -p <DB_NAME> < scripts/litter-schema.sql
 ```
 
-The bot needs **Manage Roles**, **Manage Nicknames** and **Move Members**, and its role must be above the
-roles of the members to send: the owner, the bots and the members with a role above the bot's are refused.
+The bot needs **Manage Roles** (on every channel: an overwrite can only be written where the bot has it, a
+refused channel is logged and stays visible), **Manage Nicknames**, **Move Members** and **Connect** in the litter
+voice channel, and its role must be above the roles of the members to send: the owner, the bots and the members
+with a role above the bot's are refused. The role `💩` is created at the bottom of the role list.
 The messages of this feature are in French.
 
 
