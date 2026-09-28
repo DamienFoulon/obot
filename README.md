@@ -29,6 +29,7 @@ following the structure of the [official example app](https://github.com/discord
 - Announcements and job offers (with a staff validation step, stored in MySQL)
 - Music: /play a YouTube, SoundCloud, Spotify, Deezer or Apple Music link (tracks, albums, playlists) or a search, with a queue, pause, volume, loop and buttons
 - Minecraft coordinates: in a forum, each post is a world with a panel to add, edit and list its coordinates (the posts stay clean)
+- Litière de Pipette: a 💩 user command that strips a member of their roles and locks them in a hidden category, directly for administrators or after a 4-voice vote, until they are released the same way
 
 
 ## Project structure
@@ -45,7 +46,7 @@ following the structure of the [official example app](https://github.com/discord
 │   └── modals
 ├── events          -> one file per Gateway event handler
 ├── lib             -> feature specific helpers
-├── scripts         -> maintenance scripts (voice-probe.js, coordinates-schema.sql)
+├── scripts         -> maintenance scripts (voice-probe.js, coordinates-schema.sql, litter-schema.sql)
 ├── test            -> tests (npm test)
 ├── .env            -> your credentials and IDs
 ├── app.js          -> main entrypoint, receives the interactions
@@ -194,6 +195,31 @@ The feature needs the MySQL database (`DB_*` variables) with these tables:
 
 In the forum, the bot needs **View Channel**, **Send Messages in Threads**, **Manage Messages** and
 **Read Message History**. A missing permission is logged at startup.
+
+
+## Litière de Pipette
+
+A running joke: right click on a member > Apps > **Litière 💩**. An administrator sends them to the litter
+at once; anybody else opens a public vote in the current channel, and the 4th voice (the author counts for
+one) sends them. A vote lasts 5 minutes. The same command on a member of the litter releases them (admin) or
+opens a release vote.
+
+In the litter, the member loses all their roles (saved to be given back), gets the role `💩` and the
+nickname `💩`, only sees the litter category, and is dragged to its voice channel. The bot keeps them
+there: roles given back by hand, a changed nickname or a leave-and-rejoin are undone until they are released.
+
+Set `LITTER_CHANNEL_ID` to the voice channel of the litter (its category is hidden with it). The bot creates
+the role `💩` and, on every category and channel outside the litter, a deny overwrite for it (at startup, on
+new channels, and before each sending). The feature needs the MySQL database (`DB_*` variables) with this
+table:
+
+```bash
+  mysql -h <DB_HOST> -u <DB_USER> -p <DB_NAME> < scripts/litter-schema.sql
+```
+
+The bot needs **Manage Roles**, **Manage Nicknames** and **Move Members**, and its role must be above the
+roles of the members to send: the owner, the bots and the members with a role above the bot's are refused.
+The messages of this feature are in French.
 
 
 ## Configuration

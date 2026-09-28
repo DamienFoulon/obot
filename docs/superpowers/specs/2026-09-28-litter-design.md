@@ -125,7 +125,8 @@ lib/litter/
 ├── messages.js   -> pure: French texts, vote message with its button, results, ephemeral replies
 ├── store.js      -> MySQL: get / save / delete a litter member
 ├── handlers.js   -> command and button -> responses, with api + store injected (like coordinates)
-└── index.js      -> isEnabled(), the wiring used by the events
+├── config.js     -> isLitterEnabled(), litterChannelId() (a separate file: index.js imports handlers.js)
+└── index.js      -> the real instance (Discord API + MySQL + in-memory votes) used by the thin files
 commands/moderation/litter.js            -> user command « Litière 💩 »
 components/buttons/litter/litter_vote.js -> litter_vote:<voteId>
 events/basics/guild_create.js (modified) -> + ensureHidden()
