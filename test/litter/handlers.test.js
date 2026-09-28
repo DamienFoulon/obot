@@ -240,3 +240,82 @@ test('when the vote message cannot be sent, no vote stays open', async () => {
 test('a click on a vote the bot forgot removes the button', async () => {
   assert.deepEqual(await clickBy('42', 'carl'), { type: UPDATE, data: { components: [] } });
 });
+
+const event = (userId, roles, nick) => ({ user: { id: userId, username: userId }, roles, nick });
+
+test("the bot's own change arrives as an event and changes nothing; a drift is put back", async () => {
+  await litter.command(command('alice', admin));
+  const role = litterRole();
+  const before = callsOf('patchMember').length;
+  await litter.enforce('g', event('alice', ['booster', role.id], '💩'));
+  assert.equal(callsOf('patchMember').length, before);
+  // A role given back
+  await litter.enforce('g', event('alice', ['booster', role.id, 'cop'], '💩'));
+  assert.deepEqual(api.calls.at(-1), ['patchMember', 'alice', { roles: ['booster', role.id], nick: '💩' }]);
+  // The nickname changed
+  await litter.enforce('g', event('alice', ['booster', role.id], 'Ali'));
+  assert.deepEqual(api.calls.at(-1), ['patchMember', 'alice', { roles: ['booster', role.id], nick: '💩' }]);
+  // The litter role removed
+  await litter.enforce('g', event('alice', ['booster'], '💩'));
+  assert.equal(callsOf('patchMember').length, before + 3);
+  // A free member is never touched
+  await litter.enforce('g', event('bob', ['cop'], 'Bobby'));
+  assert.equal(callsOf('patchMember').length, before + 3);
+});
+
+test('a member of the litter who comes back is put back, even when the role was deleted meanwhile', async () => {
+  await litter.command(command('alice', admin));
+  api.guild.roles = api.guild.roles.filter((role) => role.name !== '💩');
+  await litter.enforce('g', event('alice', [], null));
+  const role = litterRole();
+  assert.ok(role, 'the role is created again');
+  assert.deepEqual(api.calls.at(-1), ['patchMember', 'alice', { roles: [role.id], nick: '💩' }]);
+  // The overwrites now name the new role
+  assert.equal(api.channels[3].permission_overwrites.at(-1).id, role.id);
+});
+
+test('the lock does nothing when the feature is off', async () => {
+  await litter.command(command('alice', admin));
+  delete process.env.LITTER_CHANNEL_ID;
+  const before = api.calls.length;
+  await litter.enforce('g', event('alice', ['cop'], 'Ali'));
+  assert.equal(api.calls.length, before);
+});
+
+test('setup hides the server at startup, once', async () => {
+  await litter.setup({ id: 'g', roles: api.guild.roles, channels: api.channels });
+  assert.equal(callsOf('createRole').length, 1);
+  assert.deepEqual(callsOf('putOverwrite').map(([, id]) => id), ['cat-litter', 'litter', 'cat-chat', 'general']);
+  await litter.setup({ id: 'g', roles: api.guild.roles, channels: api.channels });
+  assert.equal(api.calls.length, 5);
+});
+
+test('setup ignores a server without the litter channel', async () => {
+  await litter.setup({ id: 'other', roles: [], channels: [{ id: 'x', guild_id: 'other', type: 0, parent_id: null, permission_overwrites: [] }] });
+  assert.equal(api.calls.length, 0);
+});
+
+test("a new channel gets its overwrite, one in the litter gets an allow, the bot's own update and another server change nothing", async () => {
+  // Before the role exists, there is nothing to write
+  await litter.channelChanged(api.channels[3]);
+  assert.equal(api.calls.length, 0);
+
+  await litter.setup({ id: 'g', roles: api.guild.roles, channels: api.channels });
+  const fresh = { id: 'new', guild_id: 'g', type: 0, parent_id: 'cat-chat', permission_overwrites: [] };
+  api.channels.push(fresh);
+  await litter.channelChanged(fresh);
+  assert.deepEqual(api.calls.at(-1), ['putOverwrite', 'new']);
+  assert.equal(fresh.permission_overwrites[0].deny, String((1n << 10n) | (1n << 20n)));
+  const afterNew = api.calls.length;
+  await litter.channelChanged(fresh);
+  assert.equal(api.calls.length, afterNew);
+
+  const inLitter = { id: 'litter-text', guild_id: 'g', type: 0, parent_id: 'cat-litter', permission_overwrites: [] };
+  api.channels.push(inLitter);
+  await litter.channelChanged(inLitter);
+  assert.equal(inLitter.permission_overwrites[0].allow, String((1n << 10n) | (1n << 11n) | (1n << 20n) | (1n << 21n)));
+
+  const afterLitter = api.calls.length;
+  await litter.channelChanged({ id: 'far', guild_id: 'other', type: 0, parent_id: null, permission_overwrites: [] });
+  assert.equal(api.calls.length, afterLitter);
+});
